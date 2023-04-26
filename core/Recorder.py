@@ -17,6 +17,12 @@ from utils.StitchedImage import StitchedImage
 from config.params import params_t
 from config.camera_infos import get_camera_infos
 
+"""
+- Check auto unction with an actual cameras
+- Implement counters ? to check how many frames each camera has taken ?
+- create a focusing mode with enable focus indicator chuck https://docs.baslerweb.com/data-chunks
+"""
+
 
 # Another way to get warnings when images are missing ... not used
 class MyImageEventHandler(pylon.ImageEventHandler):
