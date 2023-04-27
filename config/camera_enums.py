@@ -13,6 +13,7 @@ class CameraIdentificationSN(Enum):
     cam1 = '0815-0001'
     cam2 = '0815-0002'
     cam3 = '0815-0003'
+    cam42 = '22561089'
 
 
 @unique

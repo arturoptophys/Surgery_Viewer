@@ -5,7 +5,30 @@
 """
 import numpy as np
 import scipy.misc
+import cv2
+from PIL import Image
 
+class openCV_StitchedImage:
+    def __init__(self, image_list, target_size=None):
+        assert len(image_list) > 0, 'There should be at least one image.'
+        self.images = list()
+        for img in image_list:
+            # normalize shape
+            if len(img.shape) == 2:
+                img = np.stack([img] * 3, -1)
+            self.images.append(img)
+        self.stitcher = cv2.Stitcher.create(cv2.Stitcher_SCANS)
+        self.image = self._stitch()
+
+        if target_size is None:
+            target_size = (800, 1000)
+        #self.image = scipy.misc.imresize(self.image, target_size)
+        self.image = np.asarray(Image.fromarray(self.image).resize(size=target_size))
+    def _stitch(self):
+        status, pano = self.stitcher.stitch(self.images)
+        if status != cv2.Stitcher_OK:
+            print("Can't stitch images, error code = %d" % status)
+        return pano
 
 class StitchedImage(object):
     def __init__(self, image_list, target_size=None, inpaint_id=False):
@@ -19,8 +42,10 @@ class StitchedImage(object):
                 img = np.copy(img)
 
             # normalize shape
+            #if len(img.shape) == 2:
+            #    img = np.expand_dims(img, 2)
             if len(img.shape) == 2:
-                img = np.expand_dims(img, 2)
+                img = np.stack([img] * 3, -1)
             self.images.append(img)
 
         self._subframe_img_id_map = dict()
@@ -35,7 +60,8 @@ class StitchedImage(object):
             target_size = (800, 1000)
 
         self._global_scale = np.array(target_size[:2], dtype=np.float32) / np.array(self.image.shape[:2], dtype=np.float32)
-        self.image = scipy.misc.imresize(self.image, target_size)
+        #self.image = scipy.misc.imresize(self.image, target_size)
+        self.image = np.asarray(Image.fromarray(self.image).resize(size=target_size))
 
     @staticmethod
     def _calc_stack_shape(num_samples):
@@ -85,7 +111,8 @@ class StitchedImage(object):
 
                 self._subframe_img_id_map[v_shape, h_shape] = i
                 self._subframe_scales[i] = np.array(self._common_shape[:2], dtype=np.float32) / np.array(self.images[i].shape[:2], dtype=np.float32)
-                img = scipy.misc.imresize(self.images[i], self._common_shape)
+                #img = scipy.misc.imresize(self.images[i], self._common_shape)
+                img = np.asarray(Image.fromarray(self.images[i]).resize(size=self._common_shape))
                 img_list_v.append(img)
                 i += 1
 
@@ -146,6 +173,19 @@ class StitchedImage(object):
 
 
 if __name__ == '__main__':
+    img = np.random.randint(0,255,(128,128),np.uint8)
+    stitcedimg = StitchedImage([img, img, img])
+    stitcedimg2 = openCV_StitchedImage([img, img, img])
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure(1)
+    ax = fig.add_subplot(221)
+    ax2 = fig.add_subplot(222)
+    ax.imshow(stitcedimg.image)
+    ax2.imshow(stitcedimg2.image)
+    plt.show(block=True)
+
+    """
     img_list = ['/home/egg/czimmerm/datasets/FreiHAND/subject3/take01/run01/cam0/00000020.png',
                 '/home/egg/czimmerm/datasets/FreiHAND/subject3/take01/run01/cam1/00000020.png',
                 '/home/egg/czimmerm/datasets/FreiHAND/subject3/take01/run01/cam2/00000020.png',
@@ -190,6 +230,8 @@ if __name__ == '__main__':
     ax.plot(pt_cam1_st[0], pt_cam1_st[1], "ro")
     ax.plot(pt_cam2_st[0], pt_cam2_st[1], "bo")
     plt.show()
+    
+    """
 
 
 

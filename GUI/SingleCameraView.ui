@@ -6,37 +6,150 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>706</width>
-    <height>480</height>
+    <width>1065</width>
+    <height>832</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <widget class="ImageView_camera" name="widget" native="true">
+  <widget class="ImageView_camera" name="CamViewer" native="true">
    <property name="geometry">
     <rect>
      <x>10</x>
      <y>10</y>
-     <width>611</width>
-     <height>401</height>
+     <width>1031</width>
+     <height>721</height>
     </rect>
    </property>
   </widget>
   <widget class="QPushButton" name="STOPButton">
    <property name="enabled">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="geometry">
     <rect>
-     <x>540</x>
-     <y>430</y>
+     <x>960</x>
+     <y>770</y>
      <width>80</width>
      <height>41</height>
     </rect>
    </property>
    <property name="text">
     <string>STOP</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>80</x>
+     <y>760</y>
+     <width>91</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Focus indicator</string>
+   </property>
+  </widget>
+  <widget class="QProgressBar" name="progressBar">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>780</y>
+     <width>191</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="maximum">
+    <number>50</number>
+   </property>
+   <property name="value">
+    <number>20</number>
+   </property>
+   <property name="textVisible">
+    <bool>false</bool>
+   </property>
+   <property name="invertedAppearance">
+    <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="FocusCheckBox">
+   <property name="geometry">
+    <rect>
+     <x>240</x>
+     <y>780</y>
+     <width>151</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Laplacian focus check</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="WhiteBalanceButton">
+   <property name="geometry">
+    <rect>
+     <x>610</x>
+     <y>770</y>
+     <width>91</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>WhiteBalance</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="FlipXButton">
+   <property name="geometry">
+    <rect>
+     <x>740</x>
+     <y>770</y>
+     <width>91</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Flip X</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="AutoGainButton">
+   <property name="geometry">
+    <rect>
+     <x>510</x>
+     <y>770</y>
+     <width>91</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>AutoGain</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="FlipYButton">
+   <property name="geometry">
+    <rect>
+     <x>840</x>
+     <y>770</y>
+     <width>91</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Flip Y</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="AutoExposeButton">
+   <property name="geometry">
+    <rect>
+     <x>410</x>
+     <y>770</y>
+     <width>91</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>AutoExpose</string>
    </property>
   </widget>
  </widget>

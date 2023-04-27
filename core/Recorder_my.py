@@ -55,7 +55,8 @@ class Recorder(object):
         self._rid = 0
         self.fps = 10
         self._trigger = None
-        self.grab_timeout = 1000  #in ms
+        self.grab_timeout = 1000  # in
+        self.internal_queue_size = 100  # Size of the QUEUE for transfering images between threads
 
         self.log = logging.getLogger('BaslerRecorder')
         self.log.setLevel(logging.DEBUG)
@@ -163,7 +164,7 @@ class Recorder(object):
         try:
             cam.AcquisitionFrameRate = 200  # here we go to max fps in order to not be limited
         except genicam.LogicalErrorException:
-            cam.AcquisitionFrameRateAbs = 200
+            cam.AcquisitionFrameRateAbs = 200  # maybe basler 2 cameras ?
         cam.AcquisitionFrameRateEnable = True
         # behavior wrt to these values is a bit strange to me. Important seems to be to use LastImages Strategy and make MaxNumBuffers larger than OutputQueueSize. Otherwise its not guaranteed to work
         cam.MaxNumBuffer.SetValue(16)  # how many buffers there are in total (empty and full)
@@ -172,7 +173,7 @@ class Recorder(object):
 
         cam.AcquisitionMode = 'Continuous'
         # TODO add other options for color cameras !
-        # nodemap.GetNode("PixelFormat").FromString("BGR8")
+        # cam.PixelFormat.SetValue("BGR8")
         # cam.DemosaicingMode.SetValue('BaslerPGI')
         cam.PixelFormat = 'Mono8'
 
@@ -189,7 +190,7 @@ class Recorder(object):
         available_formats = cam.PixelFormat.Symbolics
 
         # figure out if a color format is available
-        if 'BGR8Packed' in available_formats:
+        if 'BGR8Packed' in available_formats or 'BGR8' in available_formats:
             return True
         return False
 
@@ -200,8 +201,14 @@ class Recorder(object):
         if not cam.IsOpen():
             was_closed = True
             cam.Open()
-        cam.Gain.SetValue(gain)
-        cam.ExposureTime.SetValue(exposure)
+        try:
+            cam.Gain.SetValue(gain)
+        except genicam.OutOfRangeException:
+            self.log.warning(f'Value{gain:0.0f} is out of range of gain for this camera')
+        try:
+            cam.ExposureTime.SetValue(exposure)
+        except genicam.OutOfRangeException:
+            self.log.warning(f'Value{exposure:0.0f} is out of range of the exposure time')
         if was_closed:
             cam.Close()
 
@@ -246,12 +253,16 @@ class Recorder(object):
 
         i = 0
         while not cam.BalanceWhiteAuto.GetValue() == 'Off':
-            cam.GrabOne(5000)
-            i += 1
+            if not cam.IsGrabbing():
+                cam.GrabOne(5000)
+                i += 1
 
-            if i > 100:
-                self.log.error('Auto White balance was not successful')
-                break
+                if i > 100:
+                    self.log.error('Auto White balance was not successful')
+                    break
+            else:
+                time.sleep(0.01)
+                i = 0
 
         # get final values
         if self._verbosity > 1:
@@ -262,10 +273,9 @@ class Recorder(object):
             print('Green= ', cam.BalanceRatio.GetValue(), end='\t')
             cam.BalanceRatioSelector.SetValue('Blue')
             print('Blue= ', cam.BalanceRatio.GetValue())
-
+        self.log.debug('Finished White balancing')
         if was_closed:
             cam.Close()
-
 
     def run_auto_exposure(self, cam_id: int) -> float:
         """ Adjust exposure time while keeping gain fixed. """
@@ -314,24 +324,54 @@ class Recorder(object):
 
         i = 0
         while not cam.ExposureAuto.GetValue() == 'Off':
-            cam.GrabOne(5000)
-            i += 1
+            if not cam.IsGrabbing():
+                cam.GrabOne(5000)
+                # instead of grabing just waiting if cama is already grabbing ?
+                i += 1
 
-            if i > 100:
-                self.log.error('Auto Exposure was not successful')
-                break
-
-        self.log.debug(f'Final exposure after {i} images {cam.ExposureTimeAbs.GetValue():d} us in range '
+                if i > 100:
+                    self.log.error('Auto Exposure was not successful')
+                    break
+            else:
+                time.sleep(0.01)
+                i = 0
+        exposure_time = self.get_cam_exposureTime(cam)
+        self.log.debug(f'Final exposure after {i} images {exposure_time:0.1f} us in range '
                        f'{cam.AutoExposureTimeLowerLimit.GetMin()}-{cam.AutoExposureTimeUpperLimit.GetMax()}')
 
         # check if we should give warnings
-        if rel_close(cam.ExposureTimeAbs.GetValue(), cam.AutoExposureTimeUpperLimit.GetMax()):
+        if rel_close(exposure_time, cam.AutoExposureTimeUpperLimit.GetMax()):
             self.log.warning('Final exposure value is very close to its maximum value:'
                              'Consider increasing gain, opening camera shutter wider or put more light.')
 
         if was_closed:
             cam.Close()
-        return cam.ExposureTimeAbs.GetValue()
+        return exposure_time
+
+    @staticmethod
+    def get_cam_exposureTime(cam: pylon.InstantCamera) -> float:
+        """Wrapper to ge exposure time.. in some cameras has different node"""
+        try:
+            return cam.ExposureTime.GetValue()
+        except genicam.LogicalErrorException:
+            return cam.ExposureTimeAbs.GetValue()
+
+    @staticmethod
+    def get_cam_gain(cam: pylon.InstantCamera) -> float:
+        """Wrapper to get gain.. some cameras might not have the option"""
+        try:
+            return cam.Gain.GetValue()
+        except genicam.LogicalErrorException:
+            return 0
+
+    @staticmethod
+    def get_cam_limits(cam: pylon.InstantCamera) -> [tuple, tuple]:
+        try:
+            gain_limits = (cam.Gain.GetMin(), cam.Gain.GetMax())
+            exp_limits = (cam.ExposureTime.GetMin(), cam.ExposureTime.GetMax())
+            return gain_limits, exp_limits
+        except genicam.LogicalErrorException:
+            return [], []
 
     def run_auto_gain(self, cam_id) -> float:
         # check if this can be run while visualization is running ?
@@ -348,9 +388,8 @@ class Recorder(object):
         self.log.info(f"Setting auto gain for {CameraIdentificationSN(cam.GetDeviceInfo().GetSerialNumber()).name} "
                       f"{cam.GetDeviceInfo().GetSerialNumber()}")
 
+        # no clue whether those are needed / or work
 
-        #no clue whether those are needed / or work
-        
         cam.AutoFunctionROISelector.SetValue('ROI1')
         cam.AutoFunctionROIUseBrightness.SetValue(True)
         cam.AutoFunctionROISelector.SetValue('ROI2')
@@ -364,8 +403,8 @@ class Recorder(object):
         hSize = int(cam.Height.GetValue() / 2)
 
         # Enforce size is a multiple of two (important because of bayer pattern)
-        wSize = int(wSize/2)*2
-        hSize = int(hSize/2)*2
+        wSize = int(wSize / 2) * 2
+        hSize = int(hSize / 2) * 2
 
         # set ROI
         cam.AutoFunctionROIWidth.SetValue(wSize)
@@ -388,25 +427,29 @@ class Recorder(object):
         cam.GainAuto.SetValue('Once')
         i = 0
         while not cam.GainAuto.GetValue() == 'Off':
-            cam.GrabOne(5000)
-            #instead of grabing just waiting if cama is already grabbing ?
-            i += 1
+            if not cam.IsGrabbing():
+                cam.GrabOne(5000)
+                # instead of grabing just waiting if cama is already grabbing ?
+                i += 1
 
-            if i > 100:
-                self.log.error('Auto Gain was not successful')
-                break
-
+                if i > 100:
+                    self.log.error('Auto Gain was not successful')
+                    break
+            else:
+                time.sleep(0.01)
+                i = 0
+        gain = self.get_cam_gain(cam)
         self.log.debug(f'Final gain after {i} images {cam.Gain.GetValue():0.1f} in range {cam.Gain.GetMin()}'
                        f'-{cam.Gain.GetMax()}')
 
         # check if we should give warnings
-        if rel_close(cam.Gain.GetValue(), cam.Gain.GetMax()):
+        if rel_close(gain, cam.Gain.GetMax()):
             self.log.warning('Final gain value is very close to its maximum value:'
                              ' Consider increasing exposure time, opening camera shutter wider or put more light.')
 
         if was_closed:
             cam.Close()
-        return cam.Gain.GetValue()
+        return gain
 
     def flip_image_x(self, cam_id: int):
         """  Flips the image in the X plane"""
@@ -415,7 +458,7 @@ class Recorder(object):
         if not cam.IsOpen():
             was_closed = True
             cam.Open()
-        cam.ReverseX = not cam.ReverseX.GetValue() #switch value
+        cam.ReverseX = not cam.ReverseX.GetValue()  # switch value
         if was_closed:
             cam.Close()
 
@@ -426,14 +469,14 @@ class Recorder(object):
         if not cam.IsOpen():
             was_closed = True
             cam.Open()
-        cam.ReverseY = not cam.ReverseY.GetValue()  #switch value
+        cam.ReverseY = not cam.ReverseY.GetValue()  # switch value
         if was_closed:
             cam.Close()
 
     def run_single_cam_show(self, cam_id: int, stop_event: Event):
         was_closed = False
         cam = self.cam_array[cam_id]
-        self.single_view_queue = Queue(100)
+        self.single_view_queue = Queue(self.internal_queue_size)
         if not cam.IsOpen():
             was_closed = True
             cam.Open()
@@ -449,11 +492,13 @@ class Recorder(object):
         self.single_view_thread.start()
 
     def stop_single_cam_show(self):
+        self.log.debug('Stoppoing sgnle view, waiting for join')
         self.single_view_thread.join()  # wait for thread to finish
+        self.log.debug('thread joined')
         self.current_cam = None
         self.stop_event = None
         self.single_view_thread = None
-        #self.current_cam.StopGrabbing()  # just to be sure..
+        # self.current_cam.StopGrabbing()  # just to be sure..
 
     def single_cam_show(self):
         cam = self.current_cam
@@ -465,7 +510,7 @@ class Recorder(object):
                 img = grabResult.GetArray()
                 self.single_view_queue.put_nowait(img)
                 grabResult.Release()
-                #if len(img.shape) == 2:
+                # if len(img.shape) == 2:
                 #    img = np.stack([img]*3, -1)
             except genicam.TimeoutException as e:
                 self.log.error(e)
@@ -475,7 +520,53 @@ class Recorder(object):
                 break
         cam.StopGrabbing()
 
+    def run_multi_cam_show(self, stop_event: Event):
+        was_closed = False
+        self.multi_view_queue = [Queue(self.internal_queue_size)] * self.cam_array.GetSize()
 
+        if not self.cam_array.IsOpen():
+            was_closed = True
+            self.cam_array.Open()
+
+        self.log.info(f'Showing {self.cam_array.GetSize()} cameras '
+                      f'with {self.fps} FPS')
+
+        self.cams_context = {}
+        for c_id, cam in enumerate(self.cam_array):
+            self._config_cams_continuous(cam)
+            self.cams_context[cam.GetCameraContext()] = c_id
+        self.stop_event = stop_event
+
+        self.multi_view_thread = Thread(target=self.multi_cam_show)
+        self.multi_view_thread.start()
+
+    def stop_multi_cam_show(self):
+        self.log.debug('Stopping multi-view, waiting for join')
+        self.multi_view_thread.join()  # wait for thread to finish
+        self.log.debug('thread joined')
+        self.stop_event = None
+        self.multi_view_thread = None
+        self.cams_context = None
+        # self.current_cam.StopGrabbing()  # just to be sure..
+
+    def multi_cam_show(self):
+        self.cam_array.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+        while not self.stop_event.isSet():
+            try:
+                grabResult = self.cam_array.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
+                img = grabResult.GetArray()
+                context_id = self.cams_context[grabResult.GetCameraContext()]
+                self.multi_view_queue[context_id].put_nowait(img)
+                grabResult.Release()
+                # if len(img.shape) == 2:
+                #    img = np.stack([img]*3, -1)
+            except genicam.TimeoutException as e:
+                self.log.error(e)
+                break
+            except Full:
+                self.log.error("Queue buffer overrun !")
+                break
+        self.cam_array.StopGrabbing()
 
 
 if __name__ == "__main__":
