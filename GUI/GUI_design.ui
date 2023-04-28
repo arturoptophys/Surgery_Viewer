@@ -295,6 +295,16 @@ Devices</string>
        <string>Exposure Time</string>
       </property>
      </widget>
+     <widget class="QComboBox" name="ColorMode_comboBox_0">
+      <property name="geometry">
+       <rect>
+        <x>220</x>
+        <y>20</y>
+        <width>62</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
     </widget>
     <widget class="QWidget" name="cam2">
      <property name="geometry">
@@ -1153,6 +1163,32 @@ Devices</string>
       <width>191</width>
       <height>161</height>
      </rect>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="HWTrig_checkBox">
+    <property name="geometry">
+     <rect>
+      <x>180</x>
+      <y>200</y>
+      <width>101</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>HW-triggered</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="DisableViz_checkBox">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>240</y>
+      <width>151</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Disable Visualization</string>
     </property>
    </widget>
   </widget>

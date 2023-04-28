@@ -14,21 +14,22 @@ from pypylon import pylon
 
 # from utils.general_util import my_mkdir
 from utils.VideoWriterFast import VideoWriterFast
-# from utils.StitchedImage import StitchedImage
+# from utils.StitchedImage import StitchedImage  # this is way to slow for real-time application
 
 from config.camera_enums import CameraIdentificationSN
 
 
 # Another way to get warnings when images are missing ... not used
+# could also implement recording videos inside such routine, needs testing if faster ?
 class MyImageEventHandler(pylon.ImageEventHandler):
     def OnImagesSkipped(self, camera, countOfSkippedImages):
         print(f"Camera{camera} skipped {countOfSkippedImages} frames")
 
 
 NUM_CAMERAS = 4  # simulated cameras
-# setup demo environment with 10 cameras
+# setup demo environment with emulated cameras
 os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
-
+# remove when not needed anymore
 
 def rel_close(v, max_v, thresh=5.0):
     v_scaled = v / max_v * 100.0
@@ -383,6 +384,7 @@ class Recorder(object):
         try:
             gain_limits = (cam.Gain.GetMin(), cam.Gain.GetMax())
             exp_limits = (cam.ExposureTime.GetMin(), cam.ExposureTime.GetMax())
+            color_modes = cam.PixelFormat.Symbolics
             return gain_limits, exp_limits
         except genicam.LogicalErrorException:
             return [], []
@@ -481,6 +483,12 @@ class Recorder(object):
                 cam.BalanceRatioSelector.SetValue('Blue')
                 blue_balance = cam.BalanceRatio.GetValue()
                 cam_settings[cam_name]['color_balance'] = (red_balance, green_balance, blue_balance)
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+
+        try:
+            color_mode = cam.PixelFormat.GetValue()
+            cam_settings[cam_name]['color_mode'] = color_mode
         except genicam.LogicalErrorException:
             pass  # Not implemented for this camera
 
@@ -635,7 +643,7 @@ class Recorder(object):
                 break
         cam.StopGrabbing()
 
-    def run_multi_cam_show(self, stop_event: Event):
+    def run_multi_cam_show(self, stop_event: Event, use_hw_trigger: bool = False):
         was_closed = False
         self.multi_view_queue = [Queue(self.internal_queue_size)] * self.cam_array.GetSize()
 
@@ -648,7 +656,10 @@ class Recorder(object):
 
         self.cams_context = {}
         for c_id, cam in enumerate(self.cam_array):
-            self._config_cams_continuous(cam)
+            if use_hw_trigger:
+                self._config_cams_hw_trigger(cam)
+            else:
+                self._config_cams_continuous(cam)
             self.cams_context[cam.GetCameraContext()] = c_id
         # self.log.debug(print(self.cams_context))
         self.stop_event = stop_event

@@ -1,18 +1,23 @@
 """
-Tool to record videos from multiple Basler cameras synchronously
+Tool to record videos from multiple Basler cameras synchronously. Based on RecTool by Christian
 
 Author: Artur artur.schneider@biologie.uni-freiburg.de
 
 Planned features:
 - visualization of set of cameras
 - save timestamps from taken frames
+- visualize calibration detection ?
+- record calibration pattern with processing ?
+- implement sockets for remote control ?
+- implement hardware trigger control !
 
-TODO
+TODO:
 - fix queue bug of frame shuffling ?
 - fix frames not filling the imageviews
 - test recording speeds / loosing frames
 - test hardware triggering
-- implement visualization using HW_trig
+- implement viewers and camera tools to be dynamically created
+- implement color modes as setting
 """
 
 import json
@@ -40,7 +45,7 @@ log.setLevel(logging.DEBUG)
 
 # logging.basicConfig(filename='GUI_run.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.0.0"
+VERSION = "0.1.0"
 
 
 class BASLER_GUI(QMainWindow):
@@ -52,12 +57,14 @@ class BASLER_GUI(QMainWindow):
         self.single_view_timer = None
         self.path2file = Path(__file__)
         uic.loadUi(self.path2file.parent / 'GUI' / 'GUI_design.ui', self)
-        self.setWindowTitle('FreiPose Recorder v.%s' % VERSION)
+        self.setWindowTitle(f'FreiPose Recorder v.{VERSION}')
         self.log = logging.getLogger('GUI')
         self.log.setLevel(logging.DEBUG)
 
         # list of gui elements for access via loops
         # todo create via loops...
+        # or create them as widget and create those in there ?
+        self.color_mode_list = None  # implement !
         self.gain_spin_list = [self.Gain_spin_0, self.Gain_spin_1, self.Gain_spin_2, self.Gain_spin_3, self.Gain_spin_4,
                                self.Gain_spin_5]
         self.exposure_spin_list = [self.ExposureTime_spin_0, self.ExposureTime_spin_1, self.ExposureTime_spin_2,
@@ -102,7 +109,7 @@ class BASLER_GUI(QMainWindow):
                 self.gain_spin_list[c_id].setMinimum(gain_limits[0])
                 self.gain_spin_list[c_id].setMaximum(gain_limits[1])
             self.gain_spin_list[c_id].setValue(self.basler_recorder.get_cam_gain(cam))
-            self.exposure_spin_list[c_id].blockSignals(False)
+            self.exposure_spin_list[c_id].blockSignals(False)  # unblock triggering of events
             self.gain_spin_list[c_id].blockSignals(False)
 
         self.CameraSettings.setCurrentIndex(0)
@@ -113,26 +120,31 @@ class BASLER_GUI(QMainWindow):
         self.stop_event = Event()
         self.basler_recorder.fps = self.FrameRateSpin.value()
         self.number_cams = self.basler_recorder.cam_array.GetSize()
-        self.basler_recorder.run_multi_cam_show(self.stop_event)
+        use_hw_trigger = self.HWTrig_checkBox.isChecked()
+        self.basler_recorder.run_multi_cam_show(self.stop_event, use_hw_trigger)
 
         self.multi_view_timer = QTimer()
         self.multi_view_timer.timeout.connect(self.update_multi_view)
-        self.multi_view_timer.start(10)  # dependign on frame rate ..
+        self.multi_view_timer.start(10)  # make depending on frame rate ..? this should be enough for 100 fps ?
         # self.singleview_thread = Thread(target = self.update_single_view)
         # self.singleview_thread.start()
         self.STOPButton.setEnabled(True)
         self.RUNButton.setEnabled(False)
         self.RECButton.setEnabled(False)
         self.ShowSingleCamButton.setEnabled(False)
+        self.FrameRateSpin.setEnabled(False)  # or implement on the go change of the framerate...
 
     def update_multi_view(self):
-        # todo.. call this from a thread ?
+        # call this from a thread ? or maybe not
         try:
             t0 = time.monotonic()
             for c_id in range(self.number_cams):
                 curr_image = self.basler_recorder.multi_view_queue[c_id].get_nowait()
                 # TODO the assigment to queues doesnt seem to be consistent !
-                self.ViewWidget_list[c_id].updateView(curr_image)
+                if self.DisableViz_checkBox.isChecked():
+                    return  # return fast
+                else:
+                    self.ViewWidget_list[c_id].updateView(curr_image)
             # self.log.debug(f"Nr elements in q {self.basler_recorder.single_view_queue.qsize()}")
             # t0 = time.monotonic()
             # stitched_image = StitchedImage(image_list).image
@@ -144,7 +156,7 @@ class BASLER_GUI(QMainWindow):
         # self.ViewWidget.updateView(stitched_image)
 
     def update_multi_view_singlewindow(self):
-        # todo.. call this from a thread ?
+        # call this from a thread ? maybe not seems to work so far
         try:
             image_list = []  # * self.number_cams
             for c_id in range(self.number_cams):
@@ -184,7 +196,6 @@ class BASLER_GUI(QMainWindow):
         self.SettingsSaveButton.setEnabled(False)
         self.SettingsLoadButton.setEnabled(False)
         self.FrameRateSpin.setEnabled(False)
-        # todo Implement
 
     def stop_cams(self):
         if self.stop_event:
@@ -301,7 +312,7 @@ class BASLER_GUI(QMainWindow):
                 file = settings_file[0]
             else:
                 return
-            
+
         with open(file, 'r') as fi:
             cam_lib = json.load(fi)
 
@@ -313,7 +324,6 @@ class BASLER_GUI(QMainWindow):
                               f'with SN: {cam.DeviceInfo.GetSerialNumber()}')
                 continue
             self.basler_recorder.set_cam_settings(cam, settings)
-
 
     ## IMAGE CONTROL ####
     def get_current_tab(self) -> int:
