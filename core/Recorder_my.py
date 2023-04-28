@@ -165,7 +165,7 @@ class Recorder(object):
             cam.AcquisitionFrameRate = 200  # here we go to max fps in order to not be limited
         except genicam.LogicalErrorException:
             cam.AcquisitionFrameRateAbs = 200  # maybe basler 2 cameras ?
-        cam.AcquisitionFrameRateEnable = True
+        cam.AcquisitionFrameRateEnable = True  # should this be False ? 
         # behavior wrt to these values is a bit strange to me. Important seems to be to use LastImages Strategy and make MaxNumBuffers larger than OutputQueueSize. Otherwise its not guaranteed to work
         cam.MaxNumBuffer.SetValue(16)  # how many buffers there are in total (empty and full)
         cam.OutputQueueSize.SetValue(
@@ -177,6 +177,7 @@ class Recorder(object):
         # cam.DemosaicingMode.SetValue('BaslerPGI')
         cam.PixelFormat = 'Mono8'
 
+        # todo Parametrize those settings !! 
         cam.LineSelector = "Line3"
         cam.LineMode = "Input"
 
@@ -185,7 +186,8 @@ class Recorder(object):
         cam.TriggerMode = "On"
         cam.TriggerActivation = 'RisingEdge'
 
-    def is_color_cam(self, cam):
+    @staticmethod
+    def is_color_cam(cam):
         # get available formats
         available_formats = cam.PixelFormat.Symbolics
 
@@ -205,10 +207,18 @@ class Recorder(object):
             cam.Gain.SetValue(gain)
         except genicam.OutOfRangeException:
             self.log.warning(f'Value{gain:0.0f} is out of range of gain for this camera')
+        except genicam.LogicalErrorException:
+            self.log.info('gain setting is not available for this camera')
+            
         try:
             cam.ExposureTime.SetValue(exposure)
         except genicam.OutOfRangeException:
             self.log.warning(f'Value{exposure:0.0f} is out of range of the exposure time')
+        except genicam.LogicalErrorException:
+            try:
+                cam.ExposureTimeAbs.SetValue(exposure)
+            except genicam.LogicalErrorException:
+                self.log.info('Exposure time  setting is not available for this camera')
         if was_closed:
             cam.Close()
 
@@ -373,6 +383,107 @@ class Recorder(object):
         except genicam.LogicalErrorException:
             return [], []
 
+    @classmethod
+    def set_cam_settings(cls, cam: pylon.InstantCamera, settings: dict):
+        was_closed = False
+        if not cam.IsOpen():
+            was_closed = True
+            cam.Open()
+
+        try:
+            cam.Gain.SetValue(gain)
+            gain = settings['gain']
+        except genicam.OutOfRangeException:
+            self.log.warning(f'Value{gain:0.0f} is out of range of gain for this camera')
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+        except KeyError:
+            pass
+
+        try:
+            exp_time = settings['exp_time']
+            cam.ExposureTime.SetValue(exp_time)
+        except KeyError:
+            pass
+        except genicam.OutOfRangeException:
+            self.log.warning(f'Value{exp_time:0.0f} is out of range of the exposure time')
+        except genicam.LogicalErrorException:
+            try:
+                cam.ExposureTimeAbs.SetValue(exp_time)
+            except genicam.LogicalErrorException:
+                pass  # Not implemented for this camera 
+
+        try:
+            flipX = settings['flipX']
+            cam.ReverseX.SetValue(flipX)
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+        except KeyError:
+            pass  # not in settings
+
+        try:
+            flipY = settings['flipY']
+            cam.ReverseX.SetValue(flipY)
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+        except KeyError:
+            pass  # not in settings
+
+        try:
+            red_balance, green_balance, blue_balance = settings['color_balance']
+            cam.BalanceRatioSelector.SetValue('Red')
+            cam.BalanceRatio.SetValue(red_balance)
+            cam.BalanceRatioSelector.SetValue('Green')
+            cam.BalanceRatio.SetValue(green_balance)
+            cam.BalanceRatioSelector.SetValue('Blue')
+            cam.BalanceRatio.SetValue(blue_balance)
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+        except KeyError:
+            pass  # not in settings
+
+        if was_closed:
+            cam.Close()
+
+    @classmethod
+    def get_cam_settings(cls, cam: pylon.InstantCamera) -> dict:
+        was_closed = False
+        if not cam.IsOpen():
+            was_closed = True
+            cam.Open()
+
+        cam_settings = {}
+        cam_name = cam.DeviceInfo.GetUserDefinedName()
+        cam_settings[cam_name] = {}
+
+        gain = cls.get_cam_gain(cam)
+        exp_time = cls.get_cam_exposureTime(cam)
+        cam_settings[cam_name]['gain'] = gain
+        cam_settings[cam_name]['exp_time'] = exp_time
+        try:
+            flipX = cam.ReverseX.GetValue()
+            flipY = cam.ReverseY.GetValue()
+            cam_settings[cam_name]['flipX'] = flipX
+            cam_settings[cam_name]['flipY'] = flipY
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+
+        try:
+            if cls.is_color_cam(cam):
+                cam.BalanceRatioSelector.SetValue('Red')
+                red_balance = cam.BalanceRatio.GetValue()
+                cam.BalanceRatioSelector.SetValue('Green')
+                green_balance = cam.BalanceRatio.GetValue()
+                cam.BalanceRatioSelector.SetValue('Blue')
+                blue_balance = cam.BalanceRatio.GetValue()
+                cam_settings[cam_name]['color_balance'] = (red_balance, green_balance, blue_balance)
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+
+        if was_closed:
+            cam.Close()
+        return cam_settings
+
     def run_auto_gain(self, cam_id) -> float:
         # check if this can be run while visualization is running ?
         # do a check if grabbing is already grabbing ?
@@ -535,6 +646,7 @@ class Recorder(object):
         for c_id, cam in enumerate(self.cam_array):
             self._config_cams_continuous(cam)
             self.cams_context[cam.GetCameraContext()] = c_id
+        # self.log.debug(print(self.cams_context))
         self.stop_event = stop_event
 
         self.multi_view_thread = Thread(target=self.multi_cam_show)
@@ -557,6 +669,10 @@ class Recorder(object):
                 img = grabResult.GetArray()
                 context_id = self.cams_context[grabResult.GetCameraContext()]
                 self.multi_view_queue[context_id].put_nowait(img)
+                # TODO THIS is buggy and images seem to jump between queues !
+                # other option could be to tuple context and image and put toghether into single queue ?
+                # make a branch to try this option 
+                # test im context is also correctly set ? 
                 grabResult.Release()
                 # if len(img.shape) == 2:
                 #    img = np.stack([img]*3, -1)
