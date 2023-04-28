@@ -13,7 +13,7 @@ from pypylon import genicam
 from pypylon import pylon
 
 # from utils.general_util import my_mkdir
-# from utils.VideoWriterFast import VideoWriterFast
+from utils.VideoWriterFast import VideoWriterFast
 # from utils.StitchedImage import StitchedImage
 
 from config.camera_enums import CameraIdentificationSN
@@ -39,6 +39,10 @@ def rel_close(v, max_v, thresh=5.0):
 
 class Recorder(object):
     def __init__(self, verbosity=0):
+        self.is_recording = False
+        self.cams_context = None
+        self.multi_record_thread = None
+        self.multi_view_queue = None
         self.stop_event = None
         self.current_cam = None
         self.single_view_thread = None
@@ -209,7 +213,7 @@ class Recorder(object):
             self.log.warning(f'Value{gain:0.0f} is out of range of gain for this camera')
         except genicam.LogicalErrorException:
             self.log.info('gain setting is not available for this camera')
-            
+
         try:
             cam.ExposureTime.SetValue(exposure)
         except genicam.OutOfRangeException:
@@ -391,10 +395,10 @@ class Recorder(object):
             cam.Open()
 
         try:
-            cam.Gain.SetValue(gain)
             gain = settings['gain']
+            cam.Gain.SetValue(gain)
         except genicam.OutOfRangeException:
-            self.log.warning(f'Value{gain:0.0f} is out of range of gain for this camera')
+            print(f'Value{gain:0.0f} is out of range of gain for this camera')
         except genicam.LogicalErrorException:
             pass  # Not implemented for this camera
         except KeyError:
@@ -406,7 +410,7 @@ class Recorder(object):
         except KeyError:
             pass
         except genicam.OutOfRangeException:
-            self.log.warning(f'Value{exp_time:0.0f} is out of range of the exposure time')
+            print(f'Value{exp_time:0.0f} is out of range of the exposure time')
         except genicam.LogicalErrorException:
             try:
                 cam.ExposureTimeAbs.SetValue(exp_time)
@@ -603,7 +607,7 @@ class Recorder(object):
         self.single_view_thread.start()
 
     def stop_single_cam_show(self):
-        self.log.debug('Stoppoing sgnle view, waiting for join')
+        self.log.debug('Stopping single view, waiting for join')
         self.single_view_thread.join()  # wait for thread to finish
         self.log.debug('thread joined')
         self.current_cam = None
@@ -653,6 +657,8 @@ class Recorder(object):
         self.multi_view_thread.start()
 
     def stop_multi_cam_show(self):
+        # TODO I SEEM TO NEVER CALL THIS !!
+
         self.log.debug('Stopping multi-view, waiting for join')
         self.multi_view_thread.join()  # wait for thread to finish
         self.log.debug('thread joined')
@@ -676,6 +682,96 @@ class Recorder(object):
                 grabResult.Release()
                 # if len(img.shape) == 2:
                 #    img = np.stack([img]*3, -1)
+            except genicam.TimeoutException as e:
+                self.log.error(e)
+                break
+            except Full:
+                self.log.error("Queue buffer overrun !")
+                break
+        self.cam_array.StopGrabbing()
+
+    def run_multi_cam_record(self, stop_event: Event, filename: str = 'testrec'):
+        was_closed = False
+        self.multi_view_queue = [Queue(self.internal_queue_size)] * self.cam_array.GetSize()
+
+        # TODO
+        # create path
+
+        if not self.cam_array.IsOpen():
+            was_closed = True
+            self.cam_array.Open()
+
+        self.log.info(f'Recording {self.cam_array.GetSize()} cameras '
+                      f'with {self.fps} FPS')
+
+        self.cams_context = {}
+        self.video_writer_list = list()
+        for c_id, cam in enumerate(self.cam_array):
+            self._config_cams_continuous(cam)  # TODO CHANGE LATER TO HW !
+            # self._config_cams_hw_trigger(cam)
+            self.cams_context[cam.GetCameraContext()] = c_id
+            video_name = f"{filename}_{datetime.datetime.now().strftime('%Y%m%d_%H%m%S')}_" \
+                         f"{cam.DeviceInfo.GetUserDefinedName()}.avi"
+
+            self.video_writer_list.append(VideoWriterFast(video_name,
+                                                          fps=self.fps,
+                                                          codec='DIVX'))
+        # self.log.debug(print(self.cams_context))
+        self.stop_event = stop_event
+
+        self.multi_record_thread = Thread(target=self.multi_cam_record)
+        self.multi_record_thread.start()
+        self.is_recording = True
+
+    def stop_multi_cam_record(self):
+        self.log.debug('Stopping recording, waiting for join')
+        self.multi_record_thread.join()
+        self.log.debug('thread joined,waiting for writers to finish')
+        for writer in self.video_writer_list:
+            writer.wait_to_finish()
+            writer.stop()
+        self.log.debug('writers finished')
+        self.is_recording = False
+        self.stop_event = None
+        self.multi_record_thread = None
+        self.cams_context = None
+
+    def multi_cam_record(self):
+        self.cam_array.StartGrabbing(pylon.GrabStrategy_LatestImages)
+        # cam.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)  # here you dont have any buffer
+        # cam.StartGrabbing(pylon.GrabStrategy_OneByOne)  # here you dont get warnings if something gets skipped
+
+        while not self.stop_event.isSet():
+            try:
+                grabResult = self.cam_array.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
+                if grabResult.GetNumberOfSkippedImages() > 0:
+                    print('WARNING: Missed %d frames' % grabResult.GetNumberOfSkippedImages())
+
+                img = grabResult.GetArray()
+                if len(img.shape) == 2:
+                    img = np.stack([img] * 3, -1)
+
+                context_id = self.cams_context[grabResult.GetCameraContext()]
+                self.video_writer_list[context_id].feed(img)
+                self.multi_view_queue[context_id].put_nowait(img)
+                # weirdly enough the recording does not mix up frames.. so maybe mixing up happens later ? in the queue
+                # or at the visualization ?
+                grabResult.Release()
+
+                """"
+                #This needs to be called in visualization routine
+                # keep track of our speed                
+                video_writer_q_state[cid] = self.video_writer_list[cid].get_state()
+                if cam_last_poll[cid] > 0:
+                    if cam_polling_freq[cid] > 0:
+                        cam_polling_freq[cid] = 0.85 * cam_polling_freq[cid] + 0.15 * (
+                                    time.time() - cam_last_poll[cid])
+                    else:
+                        cam_polling_freq[cid] = time.time() - cam_last_poll[cid]
+                cam_last_poll[cid] = time.time()
+                num_frames[cid] += 1
+                """
+
             except genicam.TimeoutException as e:
                 self.log.error(e)
                 break

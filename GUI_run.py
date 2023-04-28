@@ -5,8 +5,14 @@ Author: Artur artur.schneider@biologie.uni-freiburg.de
 
 Planned features:
 - visualization of set of cameras
-- recording videos
-- hardware triggering cameras
+- save timestamps from taken frames
+
+TODO
+- fix queue bug of frame shuffling ?
+- fix frames not filling the imageviews
+- test recording speeds / loosing frames
+- test hardware triggering
+- implement visualization using HW_trig
 """
 
 import json
@@ -154,6 +160,15 @@ class BASLER_GUI(QMainWindow):
         self.ViewWidget.updateView(stitched_image)
 
     def start_recording(self):
+        self.stop_event = Event()
+        self.basler_recorder.fps = self.FrameRateSpin.value()
+        self.number_cams = self.basler_recorder.cam_array.GetSize()
+        self.basler_recorder.run_multi_cam_record(self.stop_event)
+
+        self.multi_view_timer = QTimer()
+        self.multi_view_timer.timeout.connect(self.update_multi_view)
+        self.multi_view_timer.start(10)  # dependign on frame rate ..
+
         self.STOPButton.setEnabled(True)
         self.RUNButton.setEnabled(False)
         self.RECButton.setEnabled(False)
@@ -174,14 +189,20 @@ class BASLER_GUI(QMainWindow):
     def stop_cams(self):
         if self.stop_event:
             self.stop_event.set()
-        self.log.debug('Stopping single view, waiting for queue to join')
+        self.log.debug('Stopping grabbing')
         # self.basler_recorder.single_view_queue.join() # as this its not being emptied in a thread.. queue is not emptied but stucks here
         if self.single_view_timer:
             self.single_view_timer.stop()
             self.single_view_timer = None
+            self.basler_recorder.stop_single_cam_show()
+
         if self.multi_view_timer:
             self.multi_view_timer.stop()
             self.multi_view_timer = None
+            if self.basler_recorder.is_recording:
+                self.basler_recorder.stop_multi_cam_record()
+            else:
+                self.basler_recorder.stop_multi_cam_show()
 
         if self.single_camviewer:
             if self.single_camviewer.isVisible():
@@ -372,15 +393,19 @@ class BASLER_GUI(QMainWindow):
             spinbox.valueChanged.connect(self.set_gain_exposure)
 
     def app_is_exiting(self):
-        # todo check if recording is running
+        # check if recording is running stop if does.
         # close and realize cameras
+        self.stop_cams()  # stop any grabbing still ongoing
         if self.basler_recorder.cam_array:  # close cameras if those were open
             self.basler_recorder.cam_array.Close()
         pass
 
     def closeEvent(self, event):
         self.log.info("Received window close event.")
-        # todo add a check if recording is running ? prevent from closing ? or open dialog
+        if self.basler_recorder.is_recording:
+            self.log.warning('Recording still running. Not exiting')
+            return
+            # todo add a check if recording is running ? prevent from closing ? or open dialog
         self.app_is_exiting()
         # self.disable_console_logging()
         super(BASLER_GUI, self).closeEvent(event)
