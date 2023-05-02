@@ -16,8 +16,7 @@ from pypylon import pylon
 from utils.VideoWriterFast import VideoWriterFast
 # from utils.StitchedImage import StitchedImage  # this is way to slow for real-time application
 
-from config.camera_enums import CameraIdentificationSN
-
+from configs.camera_enums import CameraIdentificationSN
 
 # Another way to get warnings when images are missing ... not used
 # could also implement recording videos inside such routine, needs testing if faster ?
@@ -645,7 +644,7 @@ class Recorder(object):
 
     def run_multi_cam_show(self, stop_event: Event, use_hw_trigger: bool = False):
         was_closed = False
-        self.multi_view_queue = [Queue(self.internal_queue_size)] * self.cam_array.GetSize()
+        self.multi_view_queue = [Queue(self.internal_queue_size) for _ in range(self.cam_array.GetSize())]
 
         if not self.cam_array.IsOpen():
             was_closed = True
@@ -703,7 +702,7 @@ class Recorder(object):
 
     def run_multi_cam_record(self, stop_event: Event, filename: str = 'testrec'):
         was_closed = False
-        self.multi_view_queue = [Queue(self.internal_queue_size)] * self.cam_array.GetSize()
+        self.multi_view_queue = [Queue(self.internal_queue_size) for _ in range(self.cam_array.GetSize())]
 
         # TODO
         # create path

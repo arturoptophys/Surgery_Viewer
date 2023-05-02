@@ -271,7 +271,7 @@ class Recorder(object):
             cam.Close()
 
     def set_gain_exposure(self):
-        """ Set default values defined in config/params.py """
+        """ Set default values defined in configs/params.py """
         self._setup_cams()
 
         for idx, (cam_name, cam) in enumerate(zip(self._camera_names_list, self._camera_list)):
@@ -448,7 +448,7 @@ class Recorder(object):
             self._camera_list.append( pylon.InstantCamera(tlFactory.CreateDevice(dev)) )
             assert devices[did].IsSerialNumberAvailable(), 'Could not read serial number.'
             sn = dev.GetSerialNumber()
-            msg = 'Camera with serial number %s does not have a given name. Please define one in config/camera_names.py'  % sn
+            msg = 'Camera with serial number %s does not have a given name. Please define one in configs/camera_names.py'  % sn
             assert sn in self._camera_info.keys(), msg
             give_name = self._camera_info[sn]['name']
             self._camera_names_list.append(give_name)

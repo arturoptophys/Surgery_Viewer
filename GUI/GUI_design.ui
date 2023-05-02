@@ -207,7 +207,7 @@ Devices</string>
        <x>0</x>
        <y>0</y>
        <width>291</width>
-       <height>61</height>
+       <height>52</height>
       </rect>
      </property>
      <attribute name="label">
@@ -226,7 +226,7 @@ Devices</string>
        <string/>
       </property>
       <property name="suffix">
-       <string> </string>
+       <string/>
       </property>
       <property name="minimum">
        <double>0.000000000000000</double>
@@ -264,7 +264,7 @@ Devices</string>
        </rect>
       </property>
       <property name="prefix">
-       <string> </string>
+       <string/>
       </property>
       <property name="suffix">
        <string> us</string>
@@ -311,8 +311,8 @@ Devices</string>
       <rect>
        <x>0</x>
        <y>0</y>
-       <width>291</width>
-       <height>61</height>
+       <width>100</width>
+       <height>30</height>
       </rect>
      </property>
      <attribute name="label">
@@ -402,6 +402,14 @@ Devices</string>
      </widget>
     </widget>
     <widget class="QWidget" name="cam2">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>100</width>
+       <height>30</height>
+      </rect>
+     </property>
      <attribute name="label">
       <string>Camera 2</string>
      </attribute>
@@ -489,6 +497,14 @@ Devices</string>
      </widget>
     </widget>
     <widget class="QWidget" name="cam3">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>100</width>
+       <height>30</height>
+      </rect>
+     </property>
      <attribute name="label">
       <string>Camera 3</string>
      </attribute>
@@ -576,6 +592,14 @@ Devices</string>
      </widget>
     </widget>
     <widget class="QWidget" name="cam4">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>100</width>
+       <height>30</height>
+      </rect>
+     </property>
      <attribute name="label">
       <string>Camera 4</string>
      </attribute>
@@ -663,6 +687,14 @@ Devices</string>
      </widget>
     </widget>
     <widget class="QWidget" name="cam5">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>100</width>
+       <height>30</height>
+      </rect>
+     </property>
      <attribute name="label">
       <string>Camera 5</string>
      </attribute>
@@ -750,6 +782,14 @@ Devices</string>
      </widget>
     </widget>
     <widget class="QWidget" name="cam6">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>100</width>
+       <height>30</height>
+      </rect>
+     </property>
      <attribute name="label">
       <string>Camera 6</string>
      </attribute>
@@ -837,6 +877,14 @@ Devices</string>
      </widget>
     </widget>
     <widget class="QWidget" name="cam7">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>100</width>
+       <height>30</height>
+      </rect>
+     </property>
      <attribute name="label">
       <string>Camera 7</string>
      </attribute>
@@ -924,6 +972,14 @@ Devices</string>
      </widget>
     </widget>
     <widget class="QWidget" name="cam8">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>100</width>
+       <height>30</height>
+      </rect>
+     </property>
      <attribute name="label">
       <string>Camera 8</string>
      </attribute>
@@ -1144,21 +1200,11 @@ Devices</string>
       <height>161</height>
      </rect>
     </property>
-    <widget class="ImageView_camera" name="ViewWidget_5" native="true">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>191</width>
-       <height>161</height>
-      </rect>
-     </property>
-    </widget>
    </widget>
    <widget class="ImageView_camera" name="ViewWidget_6" native="true">
     <property name="geometry">
      <rect>
-      <x>250</x>
+      <x>460</x>
       <y>450</y>
       <width>191</width>
       <height>161</height>
@@ -1189,6 +1235,16 @@ Devices</string>
     </property>
     <property name="text">
      <string>Disable Visualization</string>
+    </property>
+   </widget>
+   <widget class="ImageView_camera" name="ViewWidget_5" native="true">
+    <property name="geometry">
+     <rect>
+      <x>250</x>
+      <y>450</y>
+      <width>191</width>
+      <height>161</height>
+     </rect>
     </property>
    </widget>
   </widget>
