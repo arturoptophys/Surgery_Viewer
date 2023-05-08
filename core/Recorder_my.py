@@ -25,7 +25,7 @@ class MyImageEventHandler(pylon.ImageEventHandler):
         print(f"Camera{camera} skipped {countOfSkippedImages} frames")
 
 
-NUM_CAMERAS = 4  # simulated cameras
+NUM_CAMERAS = 5  # simulated cameras
 # setup demo environment with emulated cameras
 os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
 # remove when not needed anymore
@@ -602,9 +602,11 @@ class Recorder(object):
         if not cam.IsOpen():
             was_closed = True
             cam.Open()
-
-        self.log.info(f'Showing device {CameraIdentificationSN(cam.GetDeviceInfo().GetSerialNumber()).name} '
-                      f'with {self.fps} FPS')
+        try:
+            self.log.info(f'Showing device {CameraIdentificationSN(cam.GetDeviceInfo().GetSerialNumber()).name} '
+                          f'with {self.fps} FPS')
+        except ValueError:
+            self.log.info(f'Showing device {cam.GetDeviceInfo().GetSerialNumber()} with {self.fps} FPS')
 
         self._config_cams_continuous(cam)
         self.current_cam = cam
@@ -629,9 +631,12 @@ class Recorder(object):
         while not self.stop_event.isSet():
             try:
                 grabResult = cam.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
-                img = grabResult.GetArray()
-                self.single_view_queue.put_nowait(img)
-                grabResult.Release()
+                if grabResult.GrabSucceeded():
+                    img = grabResult.GetArray()
+                    self.single_view_queue.put_nowait(img)
+                    grabResult.Release()
+                else:
+                    self.log.error(f"Occured: {grabResult.ErrorCode} {grabResult.ErrorDescription}")
                 # if len(img.shape) == 2:
                 #    img = np.stack([img]*3, -1)
             except genicam.TimeoutException as e:
@@ -667,8 +672,6 @@ class Recorder(object):
         self.multi_view_thread.start()
 
     def stop_multi_cam_show(self):
-        # TODO I SEEM TO NEVER CALL THIS !!
-
         self.log.debug('Stopping multi-view, waiting for join')
         self.multi_view_thread.join()  # wait for thread to finish
         self.log.debug('thread joined')
@@ -682,14 +685,13 @@ class Recorder(object):
         while not self.stop_event.isSet():
             try:
                 grabResult = self.cam_array.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
-                img = grabResult.GetArray()
-                context_id = self.cams_context[grabResult.GetCameraContext()]
-                self.multi_view_queue[context_id].put_nowait(img)
-                # TODO THIS is buggy and images seem to jump between queues !
-                # other option could be to tuple context and image and put toghether into single queue ?
-                # make a branch to try this option 
-                # test im context is also correctly set ? 
-                grabResult.Release()
+                if grabResult.GrabSucceeded():
+                    img = grabResult.GetArray()
+                    context_id = self.cams_context[grabResult.GetCameraContext()]
+                    self.multi_view_queue[context_id].put_nowait(img)
+                    grabResult.Release()
+                else:
+                    print("Error: ", grabResult.ErrorCode, grabResult.ErrorDescription)
                 # if len(img.shape) == 2:
                 #    img = np.stack([img]*3, -1)
             except genicam.TimeoutException as e:
@@ -756,17 +758,19 @@ class Recorder(object):
                 grabResult = self.cam_array.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
                 if grabResult.GetNumberOfSkippedImages() > 0:
                     print('WARNING: Missed %d frames' % grabResult.GetNumberOfSkippedImages())
+                if grabResult.GrabSucceeded():
+                    img = grabResult.GetArray()
+                    if len(img.shape) == 2:
+                        img = np.stack([img] * 3, -1)
 
-                img = grabResult.GetArray()
-                if len(img.shape) == 2:
-                    img = np.stack([img] * 3, -1)
-
-                context_id = self.cams_context[grabResult.GetCameraContext()]
-                self.video_writer_list[context_id].feed(img)
-                self.multi_view_queue[context_id].put_nowait(img)
-                # weirdly enough the recording does not mix up frames.. so maybe mixing up happens later ? in the queue
-                # or at the visualization ?
-                grabResult.Release()
+                    context_id = self.cams_context[grabResult.GetCameraContext()]
+                    self.video_writer_list[context_id].feed(img)
+                    self.multi_view_queue[context_id].put_nowait(img)
+                    # weirdly enough the recording does not mix up frames.. so maybe mixing up happens later ? in the queue
+                    # or at the visualization ?
+                    grabResult.Release()
+                else:
+                    self.log.error(grabResult.ErrorCode, grabResult.ErrorDescription)
 
                 """"
                 #This needs to be called in visualization routine

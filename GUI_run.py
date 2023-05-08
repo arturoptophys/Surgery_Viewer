@@ -12,7 +12,6 @@ Planned features:
 - implement hardware trigger control !
 
 TODO:
-- fix queue bug of frame shuffling ?
 - fix frames not filling the imageviews
 - test recording speeds / loosing frames
 - test hardware triggering
@@ -45,7 +44,7 @@ log.setLevel(logging.DEBUG)
 
 # logging.basicConfig(filename='GUI_run.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 
 class BASLER_GUI(QMainWindow):
@@ -64,13 +63,13 @@ class BASLER_GUI(QMainWindow):
         # list of gui elements for access via loops
         # todo create via loops...
         # or create them as widget and create those in there ?
-        self.color_mode_list = None  # implement !
+        self.color_mode_list = None  # todo implement !
         self.gain_spin_list = [self.Gain_spin_0, self.Gain_spin_1, self.Gain_spin_2, self.Gain_spin_3, self.Gain_spin_4,
-                               self.Gain_spin_5]
+                               self.Gain_spin_5,self.Gain_spin_6, self.Gain_spin_7, self.Gain_spin_8]
         self.exposure_spin_list = [self.ExposureTime_spin_0, self.ExposureTime_spin_1, self.ExposureTime_spin_2,
-                                   self.ExposureTime_spin_3, self.ExposureTime_spin_4, self.ExposureTime_spin_5]
-        self.ViewWidget_list = [self.ViewWidget_1, self.ViewWidget_2, self.ViewWidget_3, self.ViewWidget_4,
-                                self.ViewWidget_5, self.ViewWidget_6]
+                                   self.ExposureTime_spin_3, self.ExposureTime_spin_4, self.ExposureTime_spin_5,
+                                   self.ExposureTime_spin_6, self.ExposureTime_spin_7, self.ExposureTime_spin_8]
+
         self.ConnectSignals()
         self.basler_recorder = Recorder()
         self.scan_cams()
@@ -78,7 +77,8 @@ class BASLER_GUI(QMainWindow):
     ### Device Connectivity ####
     def scan_cams(self):
         found_cams = self.basler_recorder.get_cam_info()
-        if len(found_cams) > 0:
+        nr_cams = len(found_cams)
+        if nr_cams > 0:
             found_cams = '\n'.join(found_cams)
             self.Devices_textEdit.clear()
             self.Devices_textEdit.setText(f"Found cameras SN:\n{found_cams}")
@@ -88,6 +88,7 @@ class BASLER_GUI(QMainWindow):
         else:
             self.Devices_textEdit.clear()
             self.Devices_textEdit.setText(f"Found no cameras !!")
+        self.MultiViewWidget.num_cameras = nr_cams
 
     def connect_to_cams(self):
         self.basler_recorder.connect_cams()
@@ -140,11 +141,10 @@ class BASLER_GUI(QMainWindow):
             t0 = time.monotonic()
             for c_id in range(self.number_cams):
                 curr_image = self.basler_recorder.multi_view_queue[c_id].get_nowait()
-                # TODO the assigment to queues doesnt seem to be consistent !
                 if self.DisableViz_checkBox.isChecked():
                     return  # return fast
                 else:
-                    self.ViewWidget_list[c_id].updateView(curr_image)
+                    self.MultiViewWidget.cam_viewers[c_id].updateView(curr_image)
             # self.log.debug(f"Nr elements in q {self.basler_recorder.single_view_queue.qsize()}")
             # t0 = time.monotonic()
             # stitched_image = StitchedImage(image_list).image
