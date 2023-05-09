@@ -42,7 +42,7 @@ log.setLevel(logging.DEBUG)
 
 # logging.basicConfig(filename='GUI_run.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 
 class BASLER_GUI(QMainWindow):
