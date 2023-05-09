@@ -156,7 +156,7 @@ class Recorder(object):
         # TODO add other options for color cameras !
         # nodemap.GetNode("PixelFormat").FromString("BGR8")
         # cam.DemosaicingMode.SetValue('BaslerPGI')
-        cam.PixelFormat = 'Mono8'
+        #cam.PixelFormat = 'Mono8'
         cam.TriggerMode = 'Off'
 
     def _config_cams_hw_trigger(self, cam):
@@ -179,7 +179,7 @@ class Recorder(object):
         # TODO add other options for color cameras !
         # cam.PixelFormat.SetValue("BGR8")
         # cam.DemosaicingMode.SetValue('BaslerPGI')
-        cam.PixelFormat = 'Mono8'
+        #  cam.PixelFormat = 'Mono8'
 
         # todo Parametrize those settings !! 
         cam.LineSelector = "Line3"
@@ -199,6 +199,23 @@ class Recorder(object):
         if 'BGR8Packed' in available_formats or 'BGR8' in available_formats:
             return True
         return False
+
+    # functions setting the color mode of the camera
+    def set_color_mode(self, cam_id: int, color_mode: str):
+        """ Set values from GUI"""
+        was_closed = False
+        cam = self.cam_array[cam_id]
+        if not cam.IsOpen():
+            was_closed = True
+            cam.Open()
+        try:
+            cam.PixelFormat.SetValue(color_mode)
+        except genicam.LogicalErrorException:
+            self.log.info('color mode setting is not available for this camera')
+        except genicam.AccessException:
+            self.log.info('Cant set color mode while running ! ')
+        if was_closed:
+            cam.Close()
 
     def set_gain_exposure(self, cam_id: int, gain: float, exposure: float):
         """ Set values from GUI"""
@@ -379,14 +396,14 @@ class Recorder(object):
             return 0
 
     @staticmethod
-    def get_cam_limits(cam: pylon.InstantCamera) -> [tuple, tuple]:
+    def get_cam_limits(cam: pylon.InstantCamera) -> [tuple, tuple, list]:
         try:
             gain_limits = (cam.Gain.GetMin(), cam.Gain.GetMax())
             exp_limits = (cam.ExposureTime.GetMin(), cam.ExposureTime.GetMax())
             color_modes = cam.PixelFormat.Symbolics
-            return gain_limits, exp_limits
+            return gain_limits, exp_limits, color_modes
         except genicam.LogicalErrorException:
-            return [], []
+            return [], [], []
 
     @classmethod
     def set_cam_settings(cls, cam: pylon.InstantCamera, settings: dict):

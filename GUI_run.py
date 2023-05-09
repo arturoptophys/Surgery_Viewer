@@ -12,11 +12,9 @@ Planned features:
 - implement hardware trigger control !
 
 TODO:
-- fix frames not filling the imageviews
+- disable colormode selection while running
 - test recording speeds / loosing frames
 - test hardware triggering
-- implement viewers and camera tools to be dynamically created
-- implement color modes as setting
 """
 
 import json
@@ -63,13 +61,16 @@ class BASLER_GUI(QMainWindow):
         # list of gui elements for access via loops
         # todo create via loops...
         # or create them as widget and create those in there ?
+        """
         self.color_mode_list = None  # todo implement !
+
         self.gain_spin_list = [self.Gain_spin_0, self.Gain_spin_1, self.Gain_spin_2, self.Gain_spin_3, self.Gain_spin_4,
-                               self.Gain_spin_5,self.Gain_spin_6, self.Gain_spin_7, self.Gain_spin_8]
+                               self.Gain_spin_5, self.Gain_spin_6, self.Gain_spin_7, self.Gain_spin_8]
+        
         self.exposure_spin_list = [self.ExposureTime_spin_0, self.ExposureTime_spin_1, self.ExposureTime_spin_2,
                                    self.ExposureTime_spin_3, self.ExposureTime_spin_4, self.ExposureTime_spin_5,
                                    self.ExposureTime_spin_6, self.ExposureTime_spin_7, self.ExposureTime_spin_8]
-
+        """
         self.ConnectSignals()
         self.basler_recorder = Recorder()
         self.scan_cams()
@@ -89,20 +90,25 @@ class BASLER_GUI(QMainWindow):
             self.Devices_textEdit.clear()
             self.Devices_textEdit.setText(f"Found no cameras !!")
         self.MultiViewWidget.num_cameras = nr_cams
+        self.CameraSettings2.num_cameras = nr_cams
 
     def connect_to_cams(self):
         self.basler_recorder.connect_cams()
+        # TODO REMOVE
+        """
         for item_id in range(self.CameraSettings.count()):
             self.CameraSettings.setItemEnabled(item_id, False)
-
+        """
         for c_id, cam in enumerate(self.basler_recorder.cam_array):
+            #TODO REMOVE
+            """
             self.CameraSettings.setItemText(c_id, cam.DeviceInfo.GetUserDefinedName())
             self.CameraSettings.setItemEnabled(c_id, True)
 
             self.exposure_spin_list[c_id].blockSignals(True)  # block triggering of events
             self.gain_spin_list[c_id].blockSignals(True)
             self.exposure_spin_list[c_id].setValue(self.basler_recorder.get_cam_exposureTime(cam))
-            gain_limits, exp_limits = self.basler_recorder.get_cam_limits(cam)
+            gain_limits, exp_limits,_ = self.basler_recorder.get_cam_limits(cam)
             if exp_limits:
                 self.exposure_spin_list[c_id].setMinimum(exp_limits[0])
                 self.exposure_spin_list[c_id].setMaximum(exp_limits[1])
@@ -112,8 +118,29 @@ class BASLER_GUI(QMainWindow):
             self.gain_spin_list[c_id].setValue(self.basler_recorder.get_cam_gain(cam))
             self.exposure_spin_list[c_id].blockSignals(False)  # unblock triggering of events
             self.gain_spin_list[c_id].blockSignals(False)
+            """
 
-        self.CameraSettings.setCurrentIndex(0)
+            # NEW
+            # also get color modes!
+            self.CameraSettings2.toolbox.setItemText(c_id, cam.DeviceInfo.GetUserDefinedName())
+            self.CameraSettings2.exposure_spin_list[c_id].blockSignals(True)  # block triggering of events
+            self.CameraSettings2.gain_spin_list[c_id].blockSignals(True)
+            self.CameraSettings2.exposure_spin_list[c_id].setValue(self.basler_recorder.get_cam_exposureTime(cam))
+            self.CameraSettings2.gain_spin_list[c_id].setValue(self.basler_recorder.get_cam_gain(cam))
+            gain_limits, exp_limits, colormodes = self.basler_recorder.get_cam_limits(cam)
+            if exp_limits:
+                self.CameraSettings2.exposure_spin_list[c_id].setMinimum(exp_limits[0])
+                self.CameraSettings2.exposure_spin_list[c_id].setMaximum(exp_limits[1])
+            if gain_limits:
+                self.CameraSettings2.gain_spin_list[c_id].setMinimum(gain_limits[0])
+                self.CameraSettings2.gain_spin_list[c_id].setMaximum(gain_limits[1])
+            # add color modes to list
+            self.CameraSettings2.color_mode_list[c_id].clear()
+            self.CameraSettings2.color_mode_list[c_id].addItems(colormodes)
+            self.CameraSettings2.exposure_spin_list[c_id].blockSignals(False)  # unblock triggering of events
+            self.CameraSettings2.gain_spin_list[c_id].blockSignals(False)
+
+        self.CameraSettings2.toolbox.setCurrentIndex(0)
         self.RUNButton.setEnabled(True)
         self.RECButton.setEnabled(True)
 
@@ -191,7 +218,7 @@ class BASLER_GUI(QMainWindow):
         self.WhiteBalanceButton.setEnabled(False)
         self.FlipXButton.setEnabled(False)
         self.FlipYButton.setEnabled(False)
-        self.CameraSettings.setEnabled(False)
+        self.CameraSettings2.toolbox.setEnabled(False)
         self.All_cams_checkBox.setEnabled(False)
         self.SettingsSaveButton.setEnabled(False)
         self.SettingsLoadButton.setEnabled(False)
@@ -231,13 +258,16 @@ class BASLER_GUI(QMainWindow):
         self.WhiteBalanceButton.setEnabled(True)
         self.FlipXButton.setEnabled(True)
         self.FlipYButton.setEnabled(True)
-        self.CameraSettings.setEnabled(True)
+        self.CameraSettings2.toolbox.setEnabled(True)
         self.All_cams_checkBox.setEnabled(True)
         self.SettingsSaveButton.setEnabled(True)
         self.SettingsLoadButton.setEnabled(True)
         self.FrameRateSpin.setEnabled(True)
 
     def show_single_cam(self):
+        """
+        Show single camera in a separate window
+        """
         self.All_cams_checkBox.setChecked(False)  # uncheck to not mess up with settings
 
         current_camid = self.get_current_tab()
@@ -260,18 +290,23 @@ class BASLER_GUI(QMainWindow):
         self.ShowSingleCamButton.setEnabled(False)
 
     def update_single_view(self):
-        # todo.. call this from a thread ?
+        """
+        Updates the single view widget with the current image in the queue
+        """
         try:
             currentImg = self.basler_recorder.single_view_queue.get_nowait()
             # self.log.debug(f"Nr elements in q {self.basler_recorder.single_view_queue.qsize()}")
             self.statusbar.showMessage(f"In Q :{self.basler_recorder.single_view_queue.qsize()}")
-        except Empty:
+        except Empty:  # if queue is empty just return
             return
         # self.ViewWidget.updateView(currentImg)
         self.single_camviewer.updateView(currentImg)
 
     #### SETTIGNS ###
     def save_settings(self):
+        """
+        Save current camera settings to a json file
+        """
         if not self.basler_recorder.cams_connected:
             self.log.info('Not connected to cameras cant save settings')
 
@@ -279,23 +314,28 @@ class BASLER_GUI(QMainWindow):
                                     "Info",
                                     "Not connected to cameras, cant save settings",
                                     buttons=QMessageBox.StandardButton.Ok)
-
-            # open message dialog !
             return
+
         # get active camera settings.. save those to json with cam name
         cam_lib = {}
         for cam in self.basler_recorder.cam_array:
             cam_settings = self.basler_recorder.get_cam_settings(cam)
             cam_lib.update(**cam_settings)
 
-        # open file dialog for whre to save
-        settings_file = QFileDialog.getSaveFileName(self, 'Save settings file', "",
+        # open file dialog for where to save
+        settings_file = QFileDialog.getSaveFileName(self,'Save settings file', "",
                                                     "Settings files name (*.settings.json)")
         if settings_file[0]:
-            with open(settings_file[0], 'w') as fi:
+            filename = settings_file[0]
+            if len(filename.split(".")) < 2:
+                filename += '.settings.json'
+            with open(filename, 'w') as fi:
                 json.dump(cam_lib, fi, indent=4)
 
-    def load_settings(self, file=None):
+    def load_settings(self, file: (str, Path, None) = None):
+        """
+        Load camera settings from a json file
+        """
         if not self.basler_recorder.cams_connected:
             self.log.info('Not connected to cameras cant save settings')
 
@@ -328,7 +368,7 @@ class BASLER_GUI(QMainWindow):
     ## IMAGE CONTROL ####
     def get_current_tab(self) -> int:
         """Returns the ID of currently open tab"""
-        return self.CameraSettings.currentIndex()
+        return self.CameraSettings2.toolbox.currentIndex()
 
     # those functions are now blocking ? maybe make sure they r not ? create threads for actual adjustments ?
     def auto_expose(self):
@@ -336,29 +376,29 @@ class BASLER_GUI(QMainWindow):
         if self.All_cams_checkBox.isChecked():
             for current_camid in range(len(self.basler_recorder.cam_array)):
                 final_exp = self.basler_recorder.run_auto_exposure(current_camid)
-                self.exposure_spin_list[current_camid].setValue(final_exp)
+                #todo block triggerign of setting values !
+                self.CameraSettings2.exposure_spin_list[current_camid].setValue(final_exp)
         else:
             current_camid = self.get_current_tab()
             final_exp = self.basler_recorder.run_auto_exposure(current_camid)
-            self.exposure_spin_list[current_camid].setValue(final_exp)
+            self.CameraSettings2.exposure_spin_list[current_camid].setValue(final_exp)
 
     def auto_gain(self):
         """Runs autogain routine for given/all camera"""
         if self.All_cams_checkBox.isChecked():
             for current_camid in range(len(self.basler_recorder.cam_array)):
                 final_gain = self.basler_recorder.run_auto_gain(current_camid)
-                self.gain_spin_list[current_camid].setValue(final_gain)
+                self.CameraSettings2.gain_spin_list[current_camid].setValue(final_gain)
         else:
             current_camid = self.get_current_tab()
             final_gain = self.basler_recorder.run_auto_gain(current_camid)
-            self.gain_spin_list[current_camid].setValue(final_gain)
+            self.CameraSettings2.gain_spin_list[current_camid].setValue(final_gain)
 
     def white_balance(self):
         """Runs auto white balance routine for given/all camera"""
         if self.All_cams_checkBox.isChecked():
             for current_camid in range(len(self.basler_recorder.cam_array)):
                 self.basler_recorder.run_white_balance(current_camid)
-
         else:
             current_camid = self.get_current_tab()
             self.basler_recorder.run_white_balance(current_camid)
@@ -366,15 +406,27 @@ class BASLER_GUI(QMainWindow):
     def set_gain_exposure(self):
         """set the gain and exposure time for the current camera"""
         current_camid = self.get_current_tab()
-        exp_time = self.exposure_spin_list[current_camid].value()
-        gain = self.gain_spin_list[current_camid].value()
+        exp_time = self.CameraSettings2.exposure_spin_list[current_camid].value()
+        gain = self.CameraSettings2.gain_spin_list[current_camid].value()
         self.basler_recorder.set_gain_exposure(current_camid, gain, exp_time)
 
+    def set_color_mode(self, color_mode:str):
+        """set the gain and exposure time for the current camera"""
+        current_camid = self.get_current_tab()
+        self.basler_recorder.set_color_mode(current_camid, color_mode)
+        #exp_time = self.CameraSettings2.exposure_spin_list[current_camid]
+
     def flip_x(self):
+        """
+        Flip image on x axis
+        """
         current_camid = self.get_current_tab()
         self.basler_recorder.flip_image_x(current_camid)
 
     def flip_y(self):
+        """
+        Flip image on y axis
+        """
         current_camid = self.get_current_tab()
         self.basler_recorder.flip_image_y(current_camid)
 
@@ -397,11 +449,6 @@ class BASLER_GUI(QMainWindow):
 
         self.ShowSingleCamButton.clicked.connect(self.show_single_cam)
 
-        for spinbox in self.exposure_spin_list:
-            spinbox.valueChanged.connect(self.set_gain_exposure)
-        for spinbox in self.gain_spin_list:
-            spinbox.valueChanged.connect(self.set_gain_exposure)
-
     def app_is_exiting(self):
         # check if recording is running stop if does.
         # close and realize cameras
@@ -411,6 +458,9 @@ class BASLER_GUI(QMainWindow):
         pass
 
     def closeEvent(self, event):
+        """
+        Overloaded close event to make sure that all cameras are closed and all threads are stopped
+        """
         self.log.info("Received window close event.")
         if self.basler_recorder.is_recording:
             self.log.warning('Recording still running. Not exiting')

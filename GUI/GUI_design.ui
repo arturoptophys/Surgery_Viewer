@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1211</width>
-    <height>1031</height>
+    <height>1158</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -88,8 +88,8 @@ Devices</string>
     </property>
     <property name="geometry">
      <rect>
-      <x>180</x>
-      <y>150</y>
+      <x>220</x>
+      <y>160</y>
       <width>80</width>
       <height>41</height>
      </rect>
@@ -107,8 +107,8 @@ Devices</string>
     </property>
     <property name="geometry">
      <rect>
-      <x>370</x>
-      <y>150</y>
+      <x>410</x>
+      <y>160</y>
       <width>80</width>
       <height>41</height>
      </rect>
@@ -126,8 +126,8 @@ Devices</string>
     </property>
     <property name="geometry">
      <rect>
-      <x>270</x>
-      <y>150</y>
+      <x>310</x>
+      <y>160</y>
       <width>80</width>
       <height>41</height>
      </rect>
@@ -142,8 +142,8 @@ Devices</string>
    <widget class="QLabel" name="label_5">
     <property name="geometry">
      <rect>
-      <x>310</x>
-      <y>90</y>
+      <x>350</x>
+      <y>100</y>
       <width>111</width>
       <height>16</height>
      </rect>
@@ -161,8 +161,8 @@ Devices</string>
    <widget class="QSpinBox" name="FrameRateSpin">
     <property name="geometry">
      <rect>
-      <x>310</x>
-      <y>110</y>
+      <x>350</x>
+      <y>120</y>
       <width>81</width>
       <height>31</height>
      </rect>
@@ -201,898 +201,10 @@ Devices</string>
      <enum>QFrame::Sunken</enum>
     </property>
    </widget>
-   <widget class="QToolBox" name="CameraSettings">
-    <property name="geometry">
-     <rect>
-      <x>890</x>
-      <y>0</y>
-      <width>291</width>
-      <height>331</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>9</pointsize>
-     </font>
-    </property>
-    <property name="currentIndex">
-     <number>4</number>
-    </property>
-    <widget class="QWidget" name="cam0">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>291</width>
-       <height>79</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <pointsize>9</pointsize>
-      </font>
-     </property>
-     <attribute name="label">
-      <string>Camera 0</string>
-     </attribute>
-     <widget class="QDoubleSpinBox" name="Gain_spin_0">
-      <property name="geometry">
-       <rect>
-        <x>100</x>
-        <y>30</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string/>
-      </property>
-      <property name="minimum">
-       <double>0.000000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>48.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_2">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>30</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Gain</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="ExposureTime_spin_0">
-      <property name="geometry">
-       <rect>
-        <x>100</x>
-        <y>0</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string> us</string>
-      </property>
-      <property name="minimum">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>1000000.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="value">
-       <double>5.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>0</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Exposure Time</string>
-      </property>
-     </widget>
-     <widget class="QComboBox" name="ColorMode_comboBox_0">
-      <property name="geometry">
-       <rect>
-        <x>220</x>
-        <y>20</y>
-        <width>62</width>
-        <height>22</height>
-       </rect>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="cam2">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>291</width>
-       <height>79</height>
-      </rect>
-     </property>
-     <attribute name="label">
-      <string>Camera 1</string>
-     </attribute>
-     <widget class="QDoubleSpinBox" name="Gain_spin_1">
-      <property name="geometry">
-       <rect>
-        <x>100</x>
-        <y>30</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string/>
-      </property>
-      <property name="minimum">
-       <double>0.000000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>48.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_3">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>30</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Gain</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="ExposureTime_spin_1">
-      <property name="geometry">
-       <rect>
-        <x>100</x>
-        <y>0</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string> us</string>
-      </property>
-      <property name="minimum">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>1000000.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="value">
-       <double>5.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_4">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>0</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Exposure Time</string>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="cam2">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>291</width>
-       <height>79</height>
-      </rect>
-     </property>
-     <attribute name="label">
-      <string>Camera 2</string>
-     </attribute>
-     <widget class="QDoubleSpinBox" name="Gain_spin_2">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>30</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string/>
-      </property>
-      <property name="minimum">
-       <double>0.000000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>48.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_6">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>30</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Gain</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="ExposureTime_spin_2">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>0</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string> us</string>
-      </property>
-      <property name="minimum">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>1000000.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="value">
-       <double>5.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_7">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>0</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Exposure Time</string>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="cam3">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>291</width>
-       <height>79</height>
-      </rect>
-     </property>
-     <attribute name="label">
-      <string>Camera 3</string>
-     </attribute>
-     <widget class="QDoubleSpinBox" name="Gain_spin_3">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>30</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string/>
-      </property>
-      <property name="minimum">
-       <double>0.000000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>48.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_8">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>30</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Gain</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="ExposureTime_spin_3">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>0</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string> us</string>
-      </property>
-      <property name="minimum">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>1000000.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="value">
-       <double>5.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_9">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>0</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Exposure Time</string>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="cam4">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>291</width>
-       <height>79</height>
-      </rect>
-     </property>
-     <attribute name="label">
-      <string>Camera 4</string>
-     </attribute>
-     <widget class="QDoubleSpinBox" name="Gain_spin_4">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>30</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string/>
-      </property>
-      <property name="minimum">
-       <double>0.000000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>48.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_10">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>30</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Gain</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_11">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>0</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Exposure Time</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="ExposureTime_spin_4">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>0</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string> us</string>
-      </property>
-      <property name="minimum">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>1000000.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="value">
-       <double>5.000000000000000</double>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="cam5">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>291</width>
-       <height>79</height>
-      </rect>
-     </property>
-     <attribute name="label">
-      <string>Camera 5</string>
-     </attribute>
-     <widget class="QDoubleSpinBox" name="Gain_spin_5">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>30</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string/>
-      </property>
-      <property name="minimum">
-       <double>0.000000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>48.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_12">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>30</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Gain</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_13">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>0</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Exposure Time</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="ExposureTime_spin_5">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>0</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string> us</string>
-      </property>
-      <property name="minimum">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>1000000.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="value">
-       <double>5.000000000000000</double>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="cam6">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>291</width>
-       <height>79</height>
-      </rect>
-     </property>
-     <attribute name="label">
-      <string>Camera 6</string>
-     </attribute>
-     <widget class="QDoubleSpinBox" name="Gain_spin_6">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>30</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string/>
-      </property>
-      <property name="minimum">
-       <double>0.000000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>48.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_14">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>30</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Gain</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_15">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>0</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Exposure Time</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="ExposureTime_spin_6">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>0</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string> us</string>
-      </property>
-      <property name="minimum">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>1000000.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="value">
-       <double>5.000000000000000</double>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="cam7">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>291</width>
-       <height>79</height>
-      </rect>
-     </property>
-     <attribute name="label">
-      <string>Camera 7</string>
-     </attribute>
-     <widget class="QDoubleSpinBox" name="ExposureTime_spin_7">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>0</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string> us</string>
-      </property>
-      <property name="minimum">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>1000000.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="value">
-       <double>5.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_16">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>30</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Gain</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="Gain_spin_7">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>30</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string/>
-      </property>
-      <property name="minimum">
-       <double>0.000000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>48.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_17">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>0</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Exposure Time</string>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="cam8">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>291</width>
-       <height>79</height>
-      </rect>
-     </property>
-     <attribute name="label">
-      <string>Camera 8</string>
-     </attribute>
-     <widget class="QDoubleSpinBox" name="Gain_spin_8">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>30</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string/>
-      </property>
-      <property name="minimum">
-       <double>0.000000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>48.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_18">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>30</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Gain</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_19">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>0</y>
-        <width>81</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Exposure Time</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="ExposureTime_spin_8">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>0</y>
-        <width>101</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="prefix">
-       <string/>
-      </property>
-      <property name="suffix">
-       <string> us</string>
-      </property>
-      <property name="minimum">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>1000000.000000000000000</double>
-      </property>
-      <property name="singleStep">
-       <double>0.500000000000000</double>
-      </property>
-      <property name="value">
-       <double>5.000000000000000</double>
-      </property>
-     </widget>
-    </widget>
-   </widget>
    <widget class="QPushButton" name="AutoExposeButton">
     <property name="geometry">
      <rect>
-      <x>760</x>
+      <x>780</x>
       <y>40</y>
       <width>111</width>
       <height>24</height>
@@ -1105,7 +217,7 @@ Devices</string>
    <widget class="QPushButton" name="AutoGainButton">
     <property name="geometry">
      <rect>
-      <x>760</x>
+      <x>780</x>
       <y>70</y>
       <width>111</width>
       <height>24</height>
@@ -1118,7 +230,7 @@ Devices</string>
    <widget class="QPushButton" name="WhiteBalanceButton">
     <property name="geometry">
      <rect>
-      <x>760</x>
+      <x>780</x>
       <y>100</y>
       <width>111</width>
       <height>24</height>
@@ -1131,7 +243,7 @@ Devices</string>
    <widget class="QCheckBox" name="All_cams_checkBox">
     <property name="geometry">
      <rect>
-      <x>780</x>
+      <x>800</x>
       <y>10</y>
       <width>75</width>
       <height>20</height>
@@ -1144,7 +256,7 @@ Devices</string>
    <widget class="QPushButton" name="FlipXButton">
     <property name="geometry">
      <rect>
-      <x>760</x>
+      <x>780</x>
       <y>140</y>
       <width>111</width>
       <height>24</height>
@@ -1157,7 +269,7 @@ Devices</string>
    <widget class="QPushButton" name="FlipYButton">
     <property name="geometry">
      <rect>
-      <x>760</x>
+      <x>780</x>
       <y>170</y>
       <width>111</width>
       <height>24</height>
@@ -1170,7 +282,7 @@ Devices</string>
    <widget class="QPushButton" name="ShowSingleCamButton">
     <property name="geometry">
      <rect>
-      <x>760</x>
+      <x>780</x>
       <y>210</y>
       <width>111</width>
       <height>51</height>
@@ -1186,8 +298,8 @@ Devices</string>
    <widget class="QCheckBox" name="HWTrig_checkBox">
     <property name="geometry">
      <rect>
-      <x>180</x>
-      <y>200</y>
+      <x>220</x>
+      <y>210</y>
       <width>141</width>
       <height>20</height>
      </rect>
@@ -1215,11 +327,11 @@ Devices</string>
       <x>10</x>
       <y>330</y>
       <width>1191</width>
-      <height>651</height>
+      <height>781</height>
      </rect>
     </property>
     <property name="sizePolicy">
-     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
       <horstretch>0</horstretch>
       <verstretch>0</verstretch>
      </sizepolicy>
@@ -1238,6 +350,53 @@ Devices</string>
      <string>Show in Extra window</string>
     </property>
    </widget>
+   <widget class="CameraSettingsTab" name="CameraSettings2" native="true">
+    <property name="geometry">
+     <rect>
+      <x>900</x>
+      <y>0</y>
+      <width>301</width>
+      <height>331</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+   </widget>
+   <zorder>SettingsSaveButton</zorder>
+   <zorder>SettingsLoadButton</zorder>
+   <zorder>ScanDevButton</zorder>
+   <zorder>ConnectButton</zorder>
+   <zorder>RUNButton</zorder>
+   <zorder>STOPButton</zorder>
+   <zorder>RECButton</zorder>
+   <zorder>label_5</zorder>
+   <zorder>FrameRateSpin</zorder>
+   <zorder>Devices_textEdit</zorder>
+   <zorder>ViewWidget_1</zorder>
+   <zorder>AutoExposeButton</zorder>
+   <zorder>AutoGainButton</zorder>
+   <zorder>WhiteBalanceButton</zorder>
+   <zorder>All_cams_checkBox</zorder>
+   <zorder>FlipXButton</zorder>
+   <zorder>FlipYButton</zorder>
+   <zorder>ShowSingleCamButton</zorder>
+   <zorder>ViewWidget_2</zorder>
+   <zorder>ViewWidget_3</zorder>
+   <zorder>ViewWidget_4</zorder>
+   <zorder>ViewWidget_6</zorder>
+   <zorder>HWTrig_checkBox</zorder>
+   <zorder>DisableViz_checkBox</zorder>
+   <zorder>ViewWidget_5</zorder>
+   <zorder>ViewWidget_7</zorder>
+   <zorder>ViewWidget_8</zorder>
+   <zorder>ViewWidget_9</zorder>
+   <zorder>ExtraWindowButton</zorder>
+   <zorder>MultiViewWidget</zorder>
+   <zorder>CameraSettings2</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -1256,6 +415,12 @@ Devices</string>
    <class>MultiCameraViewer</class>
    <extends>QWidget</extends>
    <header location="global">ImageViewer</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CameraSettingsTab</class>
+   <extends>QWidget</extends>
+   <header>ImageViewer</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
