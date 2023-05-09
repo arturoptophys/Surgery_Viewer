@@ -51,9 +51,11 @@ def rel_close(v, max_v, thresh=5.0):
 
 class Recorder(object):
     def __init__(self, verbosity=0):
+
         self.codec = 'divx'
         self.video_writer_list = []
         self.is_recording = False
+        self.is_viewing = False
         self.cams_context = None
         self.multi_record_thread = None
         self.multi_view_queue = None
@@ -701,6 +703,7 @@ class Recorder(object):
 
         self.multi_view_thread = Thread(target=self.multi_cam_show)
         self.multi_view_thread.start()
+        self.is_viewing = True
 
     def stop_multi_cam_show(self):
         self.log.debug('Stopping multi-view, waiting for join')
@@ -709,6 +712,7 @@ class Recorder(object):
         self.stop_event = None
         self.multi_view_thread = None
         self.cams_context = None
+        self.is_viewing = False
         # self.current_cam.StopGrabbing()  # just to be sure..
 
     def multi_cam_show(self):
@@ -733,6 +737,7 @@ class Recorder(object):
                 self.log.error(f"Queue buffer{context_id}overrun !")
                 break
         self.cam_array.StopGrabbing()
+
 
     def run_multi_cam_record(self, stop_event: Event, filename: str = 'testrec'):
         was_closed = False

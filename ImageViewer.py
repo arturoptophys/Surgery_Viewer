@@ -5,7 +5,7 @@ from pyqtgraph import ImageView, RawImageWidget, GraphicsView, ImageItem, Graphi
 from datetime import datetime
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QDialog, QSizePolicy, \
     QGridLayout, QToolBox,  QDoubleSpinBox, QComboBox, QLabel
-from PyQt6 import uic, QtCore, QtGui
+from PyQt6 import uic, QtCore, QtGui, QtWidgets
 import numpy as np
 
 import cv2
@@ -336,3 +336,47 @@ class CameraSettingsTab(QWidget):
         for spinbox in self.color_mode_list:
             spinbox.currentTextChanged.connect(self.parent_color_mode)
 
+
+class RemoteConnDialog(QtWidgets.QDialog):
+    """
+    Dialog to wait for remote connection, with abort button
+    """
+    def __init__(self, socket_comm, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.socket_comm = socket_comm
+        self.setWindowTitle('Remote Connection')
+        self.abort_button = QtWidgets.QPushButton("Abort")
+        self.abort_button.clicked.connect(self.stopwaiting)
+        self.abort_button.setIcon(QtGui.QIcon("GUI/icons/HandRaised.svg"))
+        self.label = QtWidgets.QLabel("waiting for remote connection...")
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(self.label)
+        layout.addWidget(self.abort_button)
+        self.setLayout(layout)
+
+        self.connectio_time = QtCore.QTimer()
+        self.connectio_time.timeout.connect(self.check_connection)
+        self.connectio_time.start(500)
+        self.aborted = False
+
+    def check_connection(self):
+        """
+        Check if connection is established, if so close dialog, called regularly by timer
+        """
+        if self.socket_comm.connected:
+            self.close()
+
+    def stopwaiting(self):
+        """
+        Stop waiting for connection, called by abort button
+        """
+        self.socket_comm.stop_waiting_for_connection()
+        self.aborted = True
+        self.close()
+
+    def closeEvent(self, event):
+        # If the user closes the dialog, kill the process
+        self.stopwaiting()
+        self.aborted = True
+        event.accept()

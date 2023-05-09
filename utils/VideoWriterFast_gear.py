@@ -58,7 +58,11 @@ class VideoWriterFast:
 
                 start = time.time()
                 # write to stream
-                self.stream.write(frame)
+                try:
+                    self.stream.write(frame)
+                except ValueError as e:
+                    self.stopped = True
+                    print("Error writing frame to stream: {}".format(e))
                 if self.write_speed is None:
                     self.write_speed = time.time() - start
                 else:
@@ -114,7 +118,7 @@ class VideoWriterFast:
         self.thread.join()
 
     def get_state(self):
-        state = f'Queue {self.Q.qsize()}]/{self.queue_size}];'
+        state = f'Queue {self.Q.qsize()}/{self.queue_size};'
         if self.write_speed is None:
             state += ' Write speed nan FPS'
         else:

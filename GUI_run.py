@@ -4,17 +4,16 @@ Tool to record videos from multiple Basler cameras synchronously. Based on RecTo
 Author: Artur artur.schneider@biologie.uni-freiburg.de
 
 Planned features:
-- visualization of set of cameras
 - save timestamps from taken frames
 - visualize calibration detection ?
 - record calibration pattern with processing ?
-- implement sockets for remote control ?
 - implement hardware trigger control !
 
 TODO:
 - disable colormode selection while running
 - test recording speeds / loosing frames
 - test hardware triggering
+- access frame timepoints and save thos somehow
 """
 
 import json
@@ -34,16 +33,18 @@ import pyqtgraph as pg
 from pathlib import Path
 from datetime import datetime
 from core.Recorder_my import Recorder
-from ImageViewer import SingleCamViewer
+from ImageViewer import SingleCamViewer, RemoteConnDialog
 from utils.StitchedImage import StitchedImage
+from utils.socket_utils import SocketComm
 
 log = logging.getLogger('main')
 log.setLevel(logging.DEBUG)
 
 # logging.basicConfig(filename='GUI_run.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.3.1"
-
+VERSION = "0.4.0"
+HOST = "localhost" # if connecting to remote, use the IP of the current machine
+PORT = 8880
 
 class BASLER_GUI(QMainWindow):
     def __init__(self):
@@ -61,9 +62,26 @@ class BASLER_GUI(QMainWindow):
 
         codec_to_try = ["h264_nvenc", "libx264", "mpeg4", "mpeg2video", "libxvid", "libx264rgb"]
         self.Codec_comboBox.addItems(codec_to_try)
+
+        self.RUNButton.setIcon(QtGui.QIcon("GUI/icons/play.svg"))
+        self.RECButton.setIcon(QtGui.QIcon("GUI/icons/record.svg"))
+        self.STOPButton.setIcon(QtGui.QIcon("GUI/icons/stop.svg"))
+        self.RemoteModeButton.setIcon(QtGui.QIcon("GUI/icons/Signal.svg"))
+        self.ConnectButton.setIcon(QtGui.QIcon("GUI/icons/connect.svg"))
+        self.Save_pathButton.setIcon(QtGui.QIcon("GUI/icons/folder.svg"))
+        self.SettingsSaveButton.setIcon(QtGui.QIcon("GUI/icons/DocumentArrowDown.svg"))
+        self.SettingsLoadButton.setIcon(QtGui.QIcon("GUI/icons/DocumentArrowUp.svg"))
+        self.ShowSingleCamButton.setIcon(QtGui.QIcon("GUI/icons/Camera.svg"))
+        self.FlipXButton.setIcon(QtGui.QIcon("GUI/icons/ArrowsRightLeft.svg"))
+        self.FlipYButton.setIcon(QtGui.QIcon("GUI/icons/ArrowsUpDown.svg"))
+        #self.CameraSettings2.toolbox.setIcon(QtGui.QIcon("GUI/icons/AdjustmentsHorizontal.svg"))
+
         self.ConnectSignals()
         self.basler_recorder = Recorder()
         self.scan_cams()
+        self.socket_comm = SocketComm(type='server', host=HOST, port=PORT)
+        self.socket_comm.create_socket()
+        self.is_remote_ctr = False
 
     ### Device Connectivity ####
     def scan_cams(self):
@@ -84,34 +102,8 @@ class BASLER_GUI(QMainWindow):
 
     def connect_to_cams(self):
         self.basler_recorder.connect_cams()
-        # TODO REMOVE
-        """
-        for item_id in range(self.CameraSettings.count()):
-            self.CameraSettings.setItemEnabled(item_id, False)
-        """
+
         for c_id, cam in enumerate(self.basler_recorder.cam_array):
-            #TODO REMOVE
-            """
-            self.CameraSettings.setItemText(c_id, cam.DeviceInfo.GetUserDefinedName())
-            self.CameraSettings.setItemEnabled(c_id, True)
-
-            self.exposure_spin_list[c_id].blockSignals(True)  # block triggering of events
-            self.gain_spin_list[c_id].blockSignals(True)
-            self.exposure_spin_list[c_id].setValue(self.basler_recorder.get_cam_exposureTime(cam))
-            gain_limits, exp_limits,_ = self.basler_recorder.get_cam_limits(cam)
-            if exp_limits:
-                self.exposure_spin_list[c_id].setMinimum(exp_limits[0])
-                self.exposure_spin_list[c_id].setMaximum(exp_limits[1])
-            if gain_limits:
-                self.gain_spin_list[c_id].setMinimum(gain_limits[0])
-                self.gain_spin_list[c_id].setMaximum(gain_limits[1])
-            self.gain_spin_list[c_id].setValue(self.basler_recorder.get_cam_gain(cam))
-            self.exposure_spin_list[c_id].blockSignals(False)  # unblock triggering of events
-            self.gain_spin_list[c_id].blockSignals(False)
-            """
-
-            # NEW
-            # also get color modes!
             self.CameraSettings2.toolbox.setItemText(c_id, cam.DeviceInfo.GetUserDefinedName())
             self.CameraSettings2.exposure_spin_list[c_id].blockSignals(True)  # block triggering of events
             self.CameraSettings2.gain_spin_list[c_id].blockSignals(True)
@@ -133,6 +125,8 @@ class BASLER_GUI(QMainWindow):
         self.CameraSettings2.toolbox.setCurrentIndex(0)
         self.RUNButton.setEnabled(True)
         self.RECButton.setEnabled(True)
+        self.RemoteModeButton.setEnabled(True)
+        self.ConnectButton.setEnabled(False)
 
     def run_cams(self):
         self.stop_event = Event()
@@ -165,7 +159,7 @@ class BASLER_GUI(QMainWindow):
             # self.log.debug(f"Nr elements in q {self.basler_recorder.single_view_queue.qsize()}")
             # t0 = time.monotonic()
             # stitched_image = StitchedImage(image_list).image
-            print(f'It took {(time.monotonic() - t0):0.3f} s to put all images up')
+            #print(f'It took {(time.monotonic() - t0):0.3f} s to put all images up')
         except Empty:
             return
         writerstatus = f"\tVideoWriter {self.basler_recorder.video_writer_list[0].get_state()}" if len(self.basler_recorder.video_writer_list)>1 else "not recording"
@@ -193,6 +187,7 @@ class BASLER_GUI(QMainWindow):
 
     def start_recording(self):
         self.stop_event = Event()
+        self.session_id = self.SessionIDlineEdit.text()
         self.basler_recorder.fps = self.FrameRateSpin.value()
         self.basler_recorder.codec = self.Codec_comboBox.currentText()
         self.basler_recorder.crf = self.crf_spinBox.value()
@@ -240,24 +235,25 @@ class BASLER_GUI(QMainWindow):
         if self.single_camviewer:
             if self.single_camviewer.isVisible():
                 self.single_camviewer.close()
-
+        self.statusbar.showMessage("Stopped Recording")
         # do i want to show remaining images ? not really..
         # maybe instead add an indicator of how many frames are in buffer ?
         self.STOPButton.setEnabled(False)
-        self.RUNButton.setEnabled(True)
-        self.RECButton.setEnabled(True)
-        self.ShowSingleCamButton.setEnabled(True)
+        if not self.is_remote_ctr:
+            self.RUNButton.setEnabled(True)
+            self.RECButton.setEnabled(True)
+            self.ShowSingleCamButton.setEnabled(True)
 
-        self.AutoExposeButton.setEnabled(True)
-        self.AutoGainButton.setEnabled(True)
-        self.WhiteBalanceButton.setEnabled(True)
-        self.FlipXButton.setEnabled(True)
-        self.FlipYButton.setEnabled(True)
-        self.CameraSettings2.toolbox.setEnabled(True)
-        self.All_cams_checkBox.setEnabled(True)
-        self.SettingsSaveButton.setEnabled(True)
-        self.SettingsLoadButton.setEnabled(True)
-        self.FrameRateSpin.setEnabled(True)
+            self.AutoExposeButton.setEnabled(True)
+            self.AutoGainButton.setEnabled(True)
+            self.WhiteBalanceButton.setEnabled(True)
+            self.FlipXButton.setEnabled(True)
+            self.FlipYButton.setEnabled(True)
+            self.CameraSettings2.toolbox.setEnabled(True)
+            self.All_cams_checkBox.setEnabled(True)
+            self.SettingsSaveButton.setEnabled(True)
+            self.SettingsLoadButton.setEnabled(True)
+            self.FrameRateSpin.setEnabled(True)
 
     def show_single_cam(self):
         """
@@ -468,6 +464,139 @@ class BASLER_GUI(QMainWindow):
         self.ShowSingleCamButton.clicked.connect(self.show_single_cam)
 
         self.Save_pathButton.clicked.connect(self.set_save_path)
+        self.RemoteModeButton.clicked.connect(self.remote_mode)
+
+
+    def remote_mode(self):
+        if not self.socket_comm.connected:
+            self.socket_comm.threaded_accept_connection()
+            remote_dialog = RemoteConnDialog(self.socket_comm, self)
+            remote_dialog.exec()
+
+            if not self.socket_comm.connected:
+                self.log.debug('Aborted remote connection')
+            else:
+                self.log.debug('Connected')
+                self.enter_remote_mode()
+        else:
+            # self.abort_remoteconnection()
+            self.exit_remote_mode()
+
+    def enter_remote_mode(self):
+        self.Client_label.setText(f"Connected to Client:\n{self.socket_comm.addr}")
+        self.RemoteModeButton.setText("EXIT\nREMOTE-mode")
+        self.RemoteModeButton.setIcon(QtGui.QIcon("GUI/icons/SignalSlash.svg"))
+        self.RUNButton.setEnabled(False)
+        self.RECButton.setEnabled(False)
+        self.ShowSingleCamButton.setEnabled(False)
+        self.SettingsSaveButton.setEnabled(False)
+        self.SettingsLoadButton.setEnabled(False)
+        self.Save_pathButton.setEnabled(False)
+        self.CameraSettings2.setEnabled(False)
+        self.Codec_comboBox.setEnabled(False)
+        self.crf_spinBox.setEnabled(False)
+        self.HWTrig_checkBox.setEnabled(False)
+        self.AutoExposeButton.setEnabled(False)
+        self.AutoGainButton.setEnabled(False)
+        self.WhiteBalanceButton.setEnabled(False)
+        self.FlipXButton.setEnabled(False)
+        self.FlipYButton.setEnabled(False)
+        self.FrameRateSpin.setEnabled(False)
+        self.SessionIDlineEdit.setEnabled(False)
+
+        self.remote_message_timer = QTimer()
+        self.remote_message_timer.timeout.connect(self.check_and_parse_messages)
+        self.remote_message_timer.start(500)
+        self.is_remote_ctr = True
+        self.socket_comm._send(json.dumps({"type": "status", "status": "ready"}).encode())
+
+    def exit_remote_mode(self):
+        self.socket_comm.close_socket()
+        self.Client_label.setText("disconnected")
+        self.RemoteModeButton.setText("Enable\nREMOTE-mode")
+        self.RemoteModeButton.setIcon(QtGui.QIcon("GUI/icons/Signal.svg"))
+        if self.remote_message_timer:
+            self.remote_message_timer.stop()
+            self.remote_message_timer = None
+        self.is_remote_ctr = False
+
+        # enable all buttons
+        self.RUNButton.setEnabled(True)
+        self.RECButton.setEnabled(True)
+        self.ShowSingleCamButton.setEnabled(True)
+        self.SettingsSaveButton.setEnabled(True)
+        self.SettingsLoadButton.setEnabled(True)
+        self.FrameRateSpin.setEnabled(True)
+        self.Save_pathButton.setEnabled(True)
+        self.CameraSettings2.setEnabled(True)
+        self.Codec_comboBox.setEnabled(True)
+        self.crf_spinBox.setEnabled(True)
+        self.HWTrig_checkBox.setEnabled(True)
+        self.AutoExposeButton.setEnabled(True)
+        self.AutoGainButton.setEnabled(True)
+        self.WhiteBalanceButton.setEnabled(True)
+        self.FlipXButton.setEnabled(True)
+        self.FlipYButton.setEnabled(True)
+        self.SessionIDlineEdit.setEnabled(True)
+        self.SessionIDlineEdit.setText("")
+    def check_and_parse_messages(self):
+        message = self.socket_comm.read_json_message_fast()
+        if message:
+            # parse message
+            if message['type'] == 'start_rec':
+                self.log.info("got message to start recording")
+                try:
+                    if message["setting_file"]:
+                        self.load_settings(message["setting_file"])
+                        self.log.debug(f"loaded settings from {message['setting_file']}")
+                except (FileNotFoundError, KeyError):
+                    self.log.error("passed settings file not found")
+
+                self.session_name = message["session_id"]
+                self.SessionIDlineEdit.setText(self.session_name)
+                self.remote_message_timer.setInterval(10000)  # increase the interval to 10s
+                self.start_recording()
+                response = {"type": "response", "status": "recording_ok"}
+                self.socket_comm._send(json.dumps(response).encode())
+
+            elif message['type'] == 'stop':
+                self.log.info("got message to stop")
+                self.stop_cams()
+                self.remote_message_timer.setInterval(500)
+                response = {"type": "response", "status": "stop_ok"}
+                self.socket_comm._send(json.dumps(response).encode())
+
+            elif message['type'] == 'status_poll':
+                if self.basler_recorder.is_recording:
+                    response = {"type": "status", "status": "recording"}
+                elif self.basler_recorder.is_viewing:
+                    response = {"type": "status", "status": "viewing"}
+                elif self.is_remote_ctr:
+                    response = {"type": "status", "status": "ready"}
+                else:
+                    response = {"type": "status", "status": "error"}
+                self.socket_comm._send(json.dumps(response).encode())
+
+            elif message['type'] == 'start_run':
+                self.log.info("got message to start viewing")
+                try:
+                    if message["setting_file"]:
+                        self.load_settings(message["setting_file"])
+                except (FileNotFoundError, KeyError):
+                    self.log.error("passed settings file not found")
+
+                self.session_id = message["session_id"]
+                self.SessionIDlineEdit.setText(self.session_id)
+
+                try:
+                    if message["frame_rate"]:
+                        self.FrameRateSpin.setValue(message["frame_rate"])
+                except KeyError:
+                    pass
+                self.remote_message_timer.setInterval(10000)  # increase the interval to 10s
+                self.run_cams()
+                response = {"type": "response", "status": "run_ok"}
+                self.socket_comm._send(json.dumps(response).encode())
 
     def app_is_exiting(self):
         # check if recording is running stop if does.

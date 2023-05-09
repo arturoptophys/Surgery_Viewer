@@ -31,7 +31,7 @@
      <rect>
       <x>180</x>
       <y>10</y>
-      <width>101</width>
+      <width>121</width>
       <height>41</height>
      </rect>
     </property>
@@ -44,7 +44,7 @@
      <rect>
       <x>180</x>
       <y>50</y>
-      <width>101</width>
+      <width>121</width>
       <height>41</height>
      </rect>
     </property>
@@ -88,8 +88,8 @@ Devices</string>
     </property>
     <property name="geometry">
      <rect>
-      <x>220</x>
-      <y>160</y>
+      <x>350</x>
+      <y>210</y>
       <width>80</width>
       <height>41</height>
      </rect>
@@ -107,8 +107,8 @@ Devices</string>
     </property>
     <property name="geometry">
      <rect>
-      <x>410</x>
-      <y>160</y>
+      <x>540</x>
+      <y>210</y>
       <width>80</width>
       <height>41</height>
      </rect>
@@ -126,8 +126,8 @@ Devices</string>
     </property>
     <property name="geometry">
      <rect>
-      <x>310</x>
-      <y>160</y>
+      <x>440</x>
+      <y>210</y>
       <width>80</width>
       <height>41</height>
      </rect>
@@ -298,8 +298,8 @@ Devices</string>
    <widget class="QCheckBox" name="HWTrig_checkBox">
     <property name="geometry">
      <rect>
-      <x>220</x>
-      <y>210</y>
+      <x>350</x>
+      <y>260</y>
       <width>141</width>
       <height>20</height>
      </rect>
@@ -338,6 +338,9 @@ Devices</string>
     </property>
    </widget>
    <widget class="QPushButton" name="ExtraWindowButton">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>200</x>
@@ -371,7 +374,7 @@ Devices</string>
      <rect>
       <x>340</x>
       <y>10</y>
-      <width>80</width>
+      <width>91</width>
       <height>41</height>
      </rect>
     </property>
@@ -386,7 +389,7 @@ Savepath</string>
     </property>
     <property name="geometry">
      <rect>
-      <x>410</x>
+      <x>640</x>
       <y>210</y>
       <width>80</width>
       <height>41</height>
@@ -481,12 +484,15 @@ Calibration</string>
      <string>Video Encoding params</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="remote_modeButton">
+   <widget class="QPushButton" name="RemoteModeButton">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>180</x>
       <y>100</y>
-      <width>101</width>
+      <width>131</width>
       <height>51</height>
      </rect>
     </property>
@@ -501,6 +507,58 @@ Calibration</string>
     <property name="text">
      <string>Enable
 REMOTE mode</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="Client_label">
+    <property name="geometry">
+     <rect>
+      <x>180</x>
+      <y>150</y>
+      <width>161</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>8</pointsize>
+      <bold>false</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>disconnected</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="SessionIDlineEdit">
+    <property name="geometry">
+     <rect>
+      <x>350</x>
+      <y>180</y>
+      <width>371</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_4">
+    <property name="geometry">
+     <rect>
+      <x>350</x>
+      <y>160</y>
+      <width>121</width>
+      <height>17</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>video name prefix:</string>
     </property>
    </widget>
    <zorder>SettingsSaveButton</zorder>
@@ -541,7 +599,10 @@ REMOTE mode</string>
    <zorder>label</zorder>
    <zorder>label_2</zorder>
    <zorder>label_3</zorder>
-   <zorder>remote_modeButton</zorder>
+   <zorder>RemoteModeButton</zorder>
+   <zorder>Client_label</zorder>
+   <zorder>SessionIDlineEdit</zorder>
+   <zorder>label_4</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
