@@ -1,34 +1,21 @@
 # import the necessary packages
 from threading import Thread
-import sys
-import cv2
 import time
-
-# import the Queue class from Python 3
-if sys.version_info >= (3, 0):
-    from queue import Queue
-
-# otherwise, import the Queue class for Python 2.7
-else:
-    from Queue import Queue
-
+from vidgear.gears import WriteGear
+from queue import Queue
 
 class QueueOverflow(Exception):
    """Base class for other exceptions"""
    pass
 
-class codec_t:
-    divx = 'DIVX'
-    x264 = 'X264'
-    mjpg = 'MJPG'
-
 
 """
-    Utility for faster Video writing with OpenCV.
+    Utility for faster Video writing with VideoGear.
     Basically runs writing of frames in an separate thread.
 """
 class VideoWriterFast:
-    def __init__(self, video_path, fps, codec, queue_size=128):
+    def __init__(self, video_path, fps, codec="libx264", crf=0, queue_size=512):
+        self.crf = crf
         self.fps = fps
         self.codec = codec
         self.video_path = video_path
@@ -80,15 +67,18 @@ class VideoWriterFast:
             else:
                 time.sleep(0.001)  # Rest for 10ms, we have an empty queue
 
-        self.stream.release()
+        self.stream.close()
 
     def feed(self, frame):
         if self.stream is None:
-            self.stream = cv2.VideoWriter(self.video_path,
-                                          cv2.VideoWriter_fourcc(*self.codec),
-                                          self.fps,
-                                          (frame.shape[1], frame.shape[0]))
-
+            output_params = {"-input_framerate": self.fps, "-vcodec": self.codec, "-crf": self.crf}
+            output_params = {"-input_framerate": self.fps, "-vcodec": "h264_nvenc", "-crf": 0}
+            #output_params = {"-vcodec": "libx264", "-crf": 0, "-preset": "fast"}
+            self.stream = WriteGear(output=self.video_path, **output_params)
+            '''
+            working codecs h264_nvenc, libx264, mpeg4, mpeg2video, libxvid, libx264rgb
+            
+            '''
         if not self.started:
             self.start()
 
@@ -124,20 +114,20 @@ class VideoWriterFast:
         self.thread.join()
 
     def get_state(self):
-        state = 'Queue %d/%d;' % (self.Q.qsize(), self.queue_size)
+        state = f'Queue {self.Q.qsize()}]/{self.queue_size}];'
         if self.write_speed is None:
             state += ' Write speed nan FPS'
         else:
-            state += ' Write speed %.1f FPS' % (1.0 / self.write_speed)
+            state += f' Write speed {(1.0 / self.write_speed):0.1f} FPS'
         return state
 
 
 if __name__ == '__main__':
-    NUM_FRAMES = 30*10
+    NUM_FRAMES = 30*4
 
     # 1. TIME FAST VERSION
     import numpy as np
-    writer = VideoWriterFast('./test.avi', fps=30, codec=codec_t.divx)
+    writer = VideoWriterFast('./test.avi', fps=30)
     start = time.time()
     writer.start()
     for _ in range(NUM_FRAMES):

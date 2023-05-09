@@ -3,3 +3,4 @@ pyqtgraph
 pyqt6
 pypylon == 1.9.0
 opencv-python
+vidgear[core]

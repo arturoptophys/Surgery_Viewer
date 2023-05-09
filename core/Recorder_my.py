@@ -4,6 +4,8 @@ import threading
 # import cv2
 import time
 import datetime
+from pathlib import Path
+
 import numpy as np
 from collections import defaultdict
 from threading import Event, Thread
@@ -13,7 +15,10 @@ from pypylon import genicam
 from pypylon import pylon
 
 # from utils.general_util import my_mkdir
-from utils.VideoWriterFast import VideoWriterFast
+#from utils.VideoWriterFast import VideoWriterFast
+
+from utils.VideoWriterFast_gear import VideoWriterFast
+from utils.VideoWriterFast_gear import QueueOverflow
 # from utils.StitchedImage import StitchedImage  # this is way to slow for real-time application
 
 from configs.camera_enums import CameraIdentificationSN
@@ -21,13 +26,20 @@ from configs.camera_enums import CameraIdentificationSN
 # Another way to get warnings when images are missing ... not used
 # could also implement recording videos inside such routine, needs testing if faster ?
 class MyImageEventHandler(pylon.ImageEventHandler):
+    def __init__(self, camera):
+        super().__init__()
+        self.camera = camera
+        self.countOfSkippedImages = 0
     def OnImagesSkipped(self, camera, countOfSkippedImages):
         print(f"Camera{camera} skipped {countOfSkippedImages} frames")
+    def OnImageGrabbed(self, camera, grabResult):
+        print("CSampleImageEventHandler::OnImageGrabbed called.")
+
 
 
 NUM_CAMERAS = 5  # simulated cameras
 # setup demo environment with emulated cameras
-os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
+#os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
 # remove when not needed anymore
 
 def rel_close(v, max_v, thresh=5.0):
@@ -39,6 +51,8 @@ def rel_close(v, max_v, thresh=5.0):
 
 class Recorder(object):
     def __init__(self, verbosity=0):
+        self.codec = 'divx'
+        self.video_writer_list = []
         self.is_recording = False
         self.cams_context = None
         self.multi_record_thread = None
@@ -50,7 +64,7 @@ class Recorder(object):
         self.cams_connected = False
         self.cam_array = None
         self._verbosity = verbosity
-
+        self.save_path = ""
         # self._camera_info = get_camera_infos()
         self._camera_list = list()
         self._camera_names_list = list()
@@ -702,9 +716,10 @@ class Recorder(object):
         while not self.stop_event.isSet():
             try:
                 grabResult = self.cam_array.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
+                context_id = self.cams_context[grabResult.GetCameraContext()]
                 if grabResult.GrabSucceeded():
                     img = grabResult.GetArray()
-                    context_id = self.cams_context[grabResult.GetCameraContext()]
+                    #context_id = self.cams_context[grabResult.GetCameraContext()]
                     self.multi_view_queue[context_id].put_nowait(img)
                     grabResult.Release()
                 else:
@@ -715,7 +730,7 @@ class Recorder(object):
                 self.log.error(e)
                 break
             except Full:
-                self.log.error("Queue buffer overrun !")
+                self.log.error(f"Queue buffer{context_id}overrun !")
                 break
         self.cam_array.StopGrabbing()
 
@@ -739,12 +754,12 @@ class Recorder(object):
             self._config_cams_continuous(cam)  # TODO CHANGE LATER TO HW !
             # self._config_cams_hw_trigger(cam)
             self.cams_context[cam.GetCameraContext()] = c_id
-            video_name = f"{filename}_{datetime.datetime.now().strftime('%Y%m%d_%H%m%S')}_" \
-                         f"{cam.DeviceInfo.GetUserDefinedName()}.avi"
-
+            video_name = f"{filename}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_" \
+                         f"{cam.DeviceInfo.GetUserDefinedName()}.mp4"
+            video_name = (Path(self.save_path) / video_name).as_posix()
             self.video_writer_list.append(VideoWriterFast(video_name,
                                                           fps=self.fps,
-                                                          codec='DIVX'))
+                                                          codec=self.codec)) #was DIVX
         # self.log.debug(print(self.cams_context))
         self.stop_event = stop_event
 
@@ -773,14 +788,15 @@ class Recorder(object):
         while not self.stop_event.isSet():
             try:
                 grabResult = self.cam_array.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
+                context_id = self.cams_context[grabResult.GetCameraContext()]
                 if grabResult.GetNumberOfSkippedImages() > 0:
-                    print('WARNING: Missed %d frames' % grabResult.GetNumberOfSkippedImages())
+                    self.log.warning(f'Cam{context_id}: Missed {grabResult.GetNumberOfSkippedImages()} frames')
                 if grabResult.GrabSucceeded():
                     img = grabResult.GetArray()
                     if len(img.shape) == 2:
                         img = np.stack([img] * 3, -1)
 
-                    context_id = self.cams_context[grabResult.GetCameraContext()]
+                    #context_id = self.cams_context[grabResult.GetCameraContext()]
                     self.video_writer_list[context_id].feed(img)
                     self.multi_view_queue[context_id].put_nowait(img)
                     # weirdly enough the recording does not mix up frames.. so maybe mixing up happens later ? in the queue
@@ -807,7 +823,10 @@ class Recorder(object):
                 self.log.error(e)
                 break
             except Full:
-                self.log.error("Queue buffer overrun !")
+                self.log.error(f"Queue buffer{context_id}overrun !")
+                break
+            except QueueOverflow:
+                self.log.error(f"Queue buffer{context_id}overrun !")
                 break
         self.cam_array.StopGrabbing()
 

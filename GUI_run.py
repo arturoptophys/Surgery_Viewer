@@ -48,6 +48,7 @@ VERSION = "0.3.1"
 class BASLER_GUI(QMainWindow):
     def __init__(self):
         super(BASLER_GUI, self).__init__()
+        self.session_id = "test_sess"
         self.single_camviewer = None
         self.multi_view_timer = None
         self.stop_event = None
@@ -58,19 +59,8 @@ class BASLER_GUI(QMainWindow):
         self.log = logging.getLogger('GUI')
         self.log.setLevel(logging.DEBUG)
 
-        # list of gui elements for access via loops
-        # todo create via loops...
-        # or create them as widget and create those in there ?
-        """
-        self.color_mode_list = None  # todo implement !
-
-        self.gain_spin_list = [self.Gain_spin_0, self.Gain_spin_1, self.Gain_spin_2, self.Gain_spin_3, self.Gain_spin_4,
-                               self.Gain_spin_5, self.Gain_spin_6, self.Gain_spin_7, self.Gain_spin_8]
-        
-        self.exposure_spin_list = [self.ExposureTime_spin_0, self.ExposureTime_spin_1, self.ExposureTime_spin_2,
-                                   self.ExposureTime_spin_3, self.ExposureTime_spin_4, self.ExposureTime_spin_5,
-                                   self.ExposureTime_spin_6, self.ExposureTime_spin_7, self.ExposureTime_spin_8]
-        """
+        codec_to_try = ["h264_nvenc", "libx264", "mpeg4", "mpeg2video", "libxvid", "libx264rgb"]
+        self.Codec_comboBox.addItems(codec_to_try)
         self.ConnectSignals()
         self.basler_recorder = Recorder()
         self.scan_cams()
@@ -169,7 +159,7 @@ class BASLER_GUI(QMainWindow):
             for c_id in range(self.number_cams):
                 curr_image = self.basler_recorder.multi_view_queue[c_id].get_nowait()
                 if self.DisableViz_checkBox.isChecked():
-                    return  # return fast
+                    continue  # return fast
                 else:
                     self.MultiViewWidget.cam_viewers[c_id].updateView(curr_image)
             # self.log.debug(f"Nr elements in q {self.basler_recorder.single_view_queue.qsize()}")
@@ -178,7 +168,10 @@ class BASLER_GUI(QMainWindow):
             print(f'It took {(time.monotonic() - t0):0.3f} s to put all images up')
         except Empty:
             return
-        self.statusbar.showMessage(f"In Q :{self.basler_recorder.multi_view_queue[0].qsize()}")
+        writerstatus = f"\tVideoWriter {self.basler_recorder.video_writer_list[0].get_state()}" if len(self.basler_recorder.video_writer_list)>1 else "not recording"
+        self.statusbar.showMessage(f"In Q :{self.basler_recorder.multi_view_queue[0].qsize()}"
+                                   f"/In Q2: {self.basler_recorder.multi_view_queue[1].qsize()}"
+                                   f"{writerstatus}")
         # self.ViewWidget.updateView(currentImg)
         # self.ViewWidget.updateView(stitched_image)
 
@@ -201,8 +194,10 @@ class BASLER_GUI(QMainWindow):
     def start_recording(self):
         self.stop_event = Event()
         self.basler_recorder.fps = self.FrameRateSpin.value()
+        self.basler_recorder.codec = self.Codec_comboBox.currentText()
+        self.basler_recorder.crf = self.crf_spinBox.value()
         self.number_cams = self.basler_recorder.cam_array.GetSize()
-        self.basler_recorder.run_multi_cam_record(self.stop_event)
+        self.basler_recorder.run_multi_cam_record(self.stop_event, filename=self.session_id)
 
         self.multi_view_timer = QTimer()
         self.multi_view_timer.timeout.connect(self.update_multi_view)
@@ -235,12 +230,12 @@ class BASLER_GUI(QMainWindow):
             self.basler_recorder.stop_single_cam_show()
 
         if self.multi_view_timer:
-            self.multi_view_timer.stop()
-            self.multi_view_timer = None
             if self.basler_recorder.is_recording:
                 self.basler_recorder.stop_multi_cam_record()
             else:
                 self.basler_recorder.stop_multi_cam_show()
+            self.multi_view_timer.stop()
+            self.multi_view_timer = None
 
         if self.single_camviewer:
             if self.single_camviewer.isVisible():
@@ -322,6 +317,10 @@ class BASLER_GUI(QMainWindow):
             cam_settings = self.basler_recorder.get_cam_settings(cam)
             cam_lib.update(**cam_settings)
 
+        cam_lib.update(**{'save_path': self.basler_recorder.save_path, 'fps': self.FrameRateSpin.value(),
+                          "HW_trigg": self.HWTrig_checkBox.isChecked(), 'codec': self.Codec_comboBox.currentText(),
+                          "crf": self.crf_spinBox.value()})
+
         # open file dialog for where to save
         settings_file = QFileDialog.getSaveFileName(self,'Save settings file', "",
                                                     "Settings files name (*.settings.json)")
@@ -364,6 +363,25 @@ class BASLER_GUI(QMainWindow):
                               f'with SN: {cam.DeviceInfo.GetSerialNumber()}')
                 continue
             self.basler_recorder.set_cam_settings(cam, settings)
+
+        try:
+            self.HWTrig_checkBox.setChecked(cam_lib['HW_trigg'])
+            self.crf_spinBox.setValue(cam_lib['crf'])
+            self.Codec_comboBox.setCurrentText(cam_lib['codec'])
+            self.FrameRateSpin.setValue(cam_lib['fps'])
+            self.basler_recorder.save_path = cam_lib['save_path']
+        except KeyError:
+            self.log.info('No general settings found in file')
+
+    def set_save_path(self, save_path: (str, Path, None) = None):
+        """
+        Set the path where to save the recordings
+        """
+        if save_path is None or not save_path:
+            save_path = QFileDialog.getExistingDirectory(self, "Select Directory")
+        if save_path:
+            self.basler_recorder.save_path = save_path
+            self.log.debug(f'Save path set to {save_path}')
 
     ## IMAGE CONTROL ####
     def get_current_tab(self) -> int:
@@ -449,6 +467,8 @@ class BASLER_GUI(QMainWindow):
 
         self.ShowSingleCamButton.clicked.connect(self.show_single_cam)
 
+        self.Save_pathButton.clicked.connect(self.set_save_path)
+
     def app_is_exiting(self):
         # check if recording is running stop if does.
         # close and realize cameras
@@ -463,11 +483,20 @@ class BASLER_GUI(QMainWindow):
         """
         self.log.info("Received window close event.")
         if self.basler_recorder.is_recording:
-            self.log.warning('Recording still running. Not exiting')
-            return
-            # todo add a check if recording is running ? prevent from closing ? or open dialog
+            message = QMessageBox.information(self,
+                                              "Recording is active",
+                                              "Recording still running. Abort ?",
+                                              buttons=QMessageBox.StandardButton.No | QMessageBox.StandardButton.Yes)
+            if message == QMessageBox.StandardButton.No:
+                self.log.info('pressed no')
+                event.ignore()
+                return
+            elif message == QMessageBox.StandardButton.Abort:
+                event.ignore()
+                return
+            elif message == QMessageBox.StandardButton.Yes:
+                self.log.info('Exiting')
         self.app_is_exiting()
-        # self.disable_console_logging()
         super(BASLER_GUI, self).closeEvent(event)
 
 
