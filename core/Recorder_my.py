@@ -739,7 +739,7 @@ class Recorder(object):
         self.cam_array.StopGrabbing()
 
 
-    def run_multi_cam_record(self, stop_event: Event, filename: str = 'testrec'):
+    def run_multi_cam_record(self, stop_event: Event, filename: str = 'testrec', use_hw_trigger: bool = False):
         was_closed = False
         self.multi_view_queue = [Queue(self.internal_queue_size) for _ in range(self.cam_array.GetSize())]
 
@@ -756,8 +756,11 @@ class Recorder(object):
         self.cams_context = {}
         self.video_writer_list = list()
         for c_id, cam in enumerate(self.cam_array):
-            self._config_cams_continuous(cam)  # TODO CHANGE LATER TO HW !
-            # self._config_cams_hw_trigger(cam)
+            if use_hw_trigger:
+                self._config_cams_hw_trigger(cam)
+            else:
+                self._config_cams_continuous(cam)
+
             self.cams_context[cam.GetCameraContext()] = c_id
             video_name = f"{filename}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_" \
                          f"{cam.DeviceInfo.GetUserDefinedName()}.mp4"

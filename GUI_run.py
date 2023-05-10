@@ -27,7 +27,7 @@ from threading import Event, Thread
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
 from PyQt6.QtCore import Qt, QTimer, QThread
-from PyQt6 import uic, QtGui
+from PyQt6 import uic, QtGui, QtSerialPort
 import pyqtgraph as pg
 
 from pathlib import Path
@@ -36,19 +36,21 @@ from core.Recorder_my import Recorder
 from ImageViewer import SingleCamViewer, RemoteConnDialog
 from utils.StitchedImage import StitchedImage
 from utils.socket_utils import SocketComm
-
+from core.Trigger import TriggerArduino
 log = logging.getLogger('main')
 log.setLevel(logging.DEBUG)
 
 # logging.basicConfig(filename='GUI_run.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
 VERSION = "0.4.0"
-HOST = "localhost" # if connecting to remote, use the IP of the current machine
+HOST = "localhost"  # if connecting to remote, use the IP of the current machine
 PORT = 8880
+USE_ARDUINO_TRIGGER = False
 
 class BASLER_GUI(QMainWindow):
     def __init__(self):
         super(BASLER_GUI, self).__init__()
+        self.trigger_timer = None
         self.session_id = "test_sess"
         self.single_camviewer = None
         self.multi_view_timer = None
@@ -82,6 +84,12 @@ class BASLER_GUI(QMainWindow):
         self.socket_comm = SocketComm(type='server', host=HOST, port=PORT)
         self.socket_comm.create_socket()
         self.is_remote_ctr = False
+        if USE_ARDUINO_TRIGGER:
+            serial_port = f"/dev/{QtSerialPort.QSerialPortInfo.availablePorts()[0].portName()}"
+            #TODO for windows use the port name
+            self.trigger = TriggerArduino(serial_port)
+        else:
+            self.trigger = None
 
     ### Device Connectivity ####
     def scan_cams(self):
@@ -146,6 +154,14 @@ class BASLER_GUI(QMainWindow):
         self.ShowSingleCamButton.setEnabled(False)
         self.FrameRateSpin.setEnabled(False)  # or implement on the go change of the framerate...
 
+        #create a time that executes the trigger after 500 ms delay to make sure cameras are ready
+        if self.trigger and use_hw_trigger:
+            self.trigger.fps = self.FrameRateSpin.value()
+            self.trigger_timer = QTimer()
+            self.trigger_timer.setSingleShot(True)
+            self.trigger_timer.timeout.connect(self.trigger.start)
+            self.trigger_timer.start(500)
+
     def update_multi_view(self):
         # call this from a thread ? or maybe not
         try:
@@ -192,7 +208,9 @@ class BASLER_GUI(QMainWindow):
         self.basler_recorder.codec = self.Codec_comboBox.currentText()
         self.basler_recorder.crf = self.crf_spinBox.value()
         self.number_cams = self.basler_recorder.cam_array.GetSize()
-        self.basler_recorder.run_multi_cam_record(self.stop_event, filename=self.session_id)
+        use_hw_trigger = self.HWTrig_checkBox.isChecked()
+        self.basler_recorder.run_multi_cam_record(self.stop_event, filename=self.session_id,
+                                                  use_hw_trigger=use_hw_trigger)
 
         self.multi_view_timer = QTimer()
         self.multi_view_timer.timeout.connect(self.update_multi_view)
@@ -213,6 +231,14 @@ class BASLER_GUI(QMainWindow):
         self.SettingsSaveButton.setEnabled(False)
         self.SettingsLoadButton.setEnabled(False)
         self.FrameRateSpin.setEnabled(False)
+
+        #create a time that executes the trigger after 500 ms delay to make sure cameras are ready
+        if self.trigger and use_hw_trigger:
+            self.trigger.fps = self.FrameRateSpin.value()
+            self.trigger_timer = QTimer()
+            self.trigger_timer.setSingleShot(True)
+            self.trigger_timer.timeout.connect(self.trigger.start)
+            self.trigger_timer.start(500)
 
     def stop_cams(self):
         if self.stop_event:
