@@ -31,7 +31,7 @@
      <rect>
       <x>180</x>
       <y>10</y>
-      <width>121</width>
+      <width>131</width>
       <height>41</height>
      </rect>
     </property>
@@ -44,7 +44,7 @@
      <rect>
       <x>180</x>
       <y>50</y>
-      <width>121</width>
+      <width>131</width>
       <height>41</height>
      </rect>
     </property>
@@ -90,7 +90,7 @@ Devices</string>
      <rect>
       <x>350</x>
       <y>210</y>
-      <width>80</width>
+      <width>71</width>
       <height>41</height>
      </rect>
     </property>
@@ -107,7 +107,7 @@ Devices</string>
     </property>
     <property name="geometry">
      <rect>
-      <x>540</x>
+      <x>550</x>
       <y>210</y>
       <width>80</width>
       <height>41</height>
@@ -128,7 +128,7 @@ Devices</string>
      <rect>
       <x>440</x>
       <y>210</y>
-      <width>80</width>
+      <width>71</width>
       <height>41</height>
      </rect>
     </property>
@@ -383,7 +383,7 @@ Devices</string>
 Savepath</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="RECButton_2">
+   <widget class="QPushButton" name="REC_calib_Button">
     <property name="enabled">
      <bool>false</bool>
     </property>
@@ -558,7 +558,7 @@ REMOTE mode</string>
      </font>
     </property>
     <property name="text">
-     <string>video name prefix:</string>
+     <string>Video name prefix:</string>
     </property>
    </widget>
    <zorder>SettingsSaveButton</zorder>
@@ -593,7 +593,7 @@ REMOTE mode</string>
    <zorder>MultiViewWidget</zorder>
    <zorder>CameraSettings2</zorder>
    <zorder>Save_pathButton</zorder>
-   <zorder>RECButton_2</zorder>
+   <zorder>REC_calib_Button</zorder>
    <zorder>crf_spinBox</zorder>
    <zorder>Codec_comboBox</zorder>
    <zorder>label</zorder>
@@ -604,17 +604,20 @@ REMOTE mode</string>
    <zorder>SessionIDlineEdit</zorder>
    <zorder>label_4</zorder>
   </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>1211</width>
-     <height>22</height>
-    </rect>
-   </property>
-  </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionsaveSettings">
+   <property name="text">
+    <string>SaveSettings</string>
+   </property>
+  </action>
+  <action name="actionLoadSettings">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>LoadSettings</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>

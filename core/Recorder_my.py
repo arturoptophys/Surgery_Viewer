@@ -15,13 +15,14 @@ from pypylon import genicam
 from pypylon import pylon
 
 # from utils.general_util import my_mkdir
-#from utils.VideoWriterFast import VideoWriterFast
+# from utils.VideoWriterFast import VideoWriterFast
 
 from utils.VideoWriterFast_gear import VideoWriterFast
 from utils.VideoWriterFast_gear import QueueOverflow
 # from utils.StitchedImage import StitchedImage  # this is way to slow for real-time application
 
 from configs.camera_enums import CameraIdentificationSN
+
 
 # Another way to get warnings when images are missing ... not used
 # could also implement recording videos inside such routine, needs testing if faster ?
@@ -30,17 +31,20 @@ class MyImageEventHandler(pylon.ImageEventHandler):
         super().__init__()
         self.camera = camera
         self.countOfSkippedImages = 0
+
     def OnImagesSkipped(self, camera, countOfSkippedImages):
         print(f"Camera{camera} skipped {countOfSkippedImages} frames")
+
     def OnImageGrabbed(self, camera, grabResult):
         print("CSampleImageEventHandler::OnImageGrabbed called.")
 
 
-
 NUM_CAMERAS = 5  # simulated cameras
 # setup demo environment with emulated cameras
-#os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
+# os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
 # remove when not needed anymore
+TRIGGER_LINE = "Line3"
+
 
 def rel_close(v, max_v, thresh=5.0):
     v_scaled = v / max_v * 100.0
@@ -50,8 +54,8 @@ def rel_close(v, max_v, thresh=5.0):
 
 
 class Recorder(object):
-    def __init__(self, verbosity=0):
-
+    def __init__(self, verbosity=0, write_timestamps=False):
+        self.write_timestamps = write_timestamps
         self.codec = 'divx'
         self.video_writer_list = []
         self.is_recording = False
@@ -125,7 +129,6 @@ class Recorder(object):
                 CameraIdentificationSN(sn)
             except ValueError:
                 self.log.info(f'Connected camera {sn} not found in Enum')
-            # todo make an identinfication table to associate a camera with a defined name !
 
     def connect_cams(self):
         self.cam_array.Open()
@@ -144,7 +147,6 @@ class Recorder(object):
         self.log.debug(f'Connected to {self.cam_array.GetSize()} cameras')
 
     def disconnect_cams(self):
-        # todo add a check if recording is running ?
         self.cam_array.Close()
         self.cams_connected = False
 
@@ -169,11 +171,11 @@ class Recorder(object):
             8)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
 
         cam.AcquisitionMode = 'Continuous'
-        # TODO add other options for color cameras !
+        cam.TriggerMode = 'Off'
+
         # nodemap.GetNode("PixelFormat").FromString("BGR8")
         # cam.DemosaicingMode.SetValue('BaslerPGI')
-        #cam.PixelFormat = 'Mono8'
-        cam.TriggerMode = 'Off'
+        # cam.PixelFormat = 'Mono8'
 
     def _config_cams_hw_trigger(self, cam):
         # cam.RegisterImageEventHandler(MyImageEventHandler(),
@@ -192,7 +194,6 @@ class Recorder(object):
             8)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
 
         cam.AcquisitionMode = 'Continuous'
-        # TODO add other options for color cameras !
         # cam.PixelFormat.SetValue("BGR8")
         # cam.DemosaicingMode.SetValue('BaslerPGI')
         #  cam.PixelFormat = 'Mono8'
@@ -202,7 +203,7 @@ class Recorder(object):
         cam.LineMode = "Input"
 
         cam.TriggerSelector = "FrameStart"
-        cam.TriggerSource = "Line3"
+        cam.TriggerSource = TRIGGER_LINE
         cam.TriggerMode = "On"
         cam.TriggerActivation = 'RisingEdge'
 
@@ -366,7 +367,6 @@ class Recorder(object):
         cam.AutoExposureTimeUpperLimit.SetValue(cam.AutoExposureTimeUpperLimit.GetMax())
 
         # set gain to its reference value
-        # TODO set some gain value ?
         cam.ExposureAuto.SetValue('Once')
 
         i = 0
@@ -577,7 +577,6 @@ class Recorder(object):
 
         # set exposure to its reference value
         # cam.ExposureTime.SetValue(0)
-        # todo set some exposure value ?
         # print('Initial gain', cam.Gain.GetValue())
         cam.GainAuto.SetValue('Once')
         i = 0
@@ -723,7 +722,7 @@ class Recorder(object):
                 context_id = self.cams_context[grabResult.GetCameraContext()]
                 if grabResult.GrabSucceeded():
                     img = grabResult.GetArray()
-                    #context_id = self.cams_context[grabResult.GetCameraContext()]
+                    # context_id = self.cams_context[grabResult.GetCameraContext()]
                     self.multi_view_queue[context_id].put_nowait(img)
                     grabResult.Release()
                 else:
@@ -738,13 +737,13 @@ class Recorder(object):
                 break
         self.cam_array.StopGrabbing()
 
-
     def run_multi_cam_record(self, stop_event: Event, filename: str = 'testrec', use_hw_trigger: bool = False):
         was_closed = False
         self.multi_view_queue = [Queue(self.internal_queue_size) for _ in range(self.cam_array.GetSize())]
 
-        # TODO
-        # create path
+
+        # create path if not exists
+        (Path(self.save_path)).mkdir(parents=True, exist_ok=True)
 
         if not self.cam_array.IsOpen():
             was_closed = True
@@ -767,7 +766,7 @@ class Recorder(object):
             video_name = (Path(self.save_path) / video_name).as_posix()
             self.video_writer_list.append(VideoWriterFast(video_name,
                                                           fps=self.fps,
-                                                          codec=self.codec)) #was DIVX
+                                                          codec=self.codec))  # was DIVX
         # self.log.debug(print(self.cams_context))
         self.stop_event = stop_event
 
@@ -801,11 +800,17 @@ class Recorder(object):
                     self.log.warning(f'Cam{context_id}: Missed {grabResult.GetNumberOfSkippedImages()} frames')
                 if grabResult.GrabSucceeded():
                     img = grabResult.GetArray()
+                    img_nr_camera = grabResult.ID
+                    img_nr = grabResult.ImageNumber
+                    img_ts = grabResult.TimeStamp
                     if len(img.shape) == 2:
                         img = np.stack([img] * 3, -1)
 
-                    #context_id = self.cams_context[grabResult.GetCameraContext()]
-                    self.video_writer_list[context_id].feed(img)
+                    # context_id = self.cams_context[grabResult.GetCameraContext()]
+                    if self.write_timestamps:
+                        self.video_writer_list[context_id].feed((img, img_nr_camera, img_nr, img_ts))
+                    else:
+                        self.video_writer_list[context_id].feed(img)
                     self.multi_view_queue[context_id].put_nowait(img)
                     # weirdly enough the recording does not mix up frames.. so maybe mixing up happens later ? in the queue
                     # or at the visualization ?

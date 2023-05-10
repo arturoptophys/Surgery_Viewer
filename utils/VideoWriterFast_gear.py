@@ -1,4 +1,5 @@
 # import the necessary packages
+import json
 from threading import Thread
 import time
 from vidgear.gears import WriteGear
@@ -13,6 +14,7 @@ class QueueOverflow(Exception):
     Utility for faster Video writing with VideoGear.
     Basically runs writing of frames in an separate thread.
 """
+
 class VideoWriterFast:
     def __init__(self, video_path, fps, codec="libx264", crf=0, queue_size=512):
         self.crf = crf
@@ -33,6 +35,7 @@ class VideoWriterFast:
         # the video file
         self.queue_size = queue_size
         self.Q = Queue(maxsize=queue_size)
+        self.frame_ts = []
         # intialize thread
         self.thread = Thread(target=self.update, args=())
         self.thread.daemon = True
@@ -76,7 +79,7 @@ class VideoWriterFast:
     def feed(self, frame):
         if self.stream is None:
             output_params = {"-input_framerate": self.fps, "-vcodec": self.codec, "-crf": self.crf}
-            output_params = {"-input_framerate": self.fps, "-vcodec": "h264_nvenc", "-crf": 0}
+            #output_params = {"-input_framerate": self.fps, "-vcodec": "h264_nvenc", "-crf": 0}
             #output_params = {"-vcodec": "libx264", "-crf": 0, "-preset": "fast"}
             self.stream = WriteGear(output=self.video_path, **output_params)
             '''
@@ -88,7 +91,11 @@ class VideoWriterFast:
 
         if not self.Q.full():
             # add the frame to the queue
-            return self.Q.put(frame)
+            if isinstance(frame, (list, tuple)):
+                self.frame_ts.append(frame[1:])
+                return self.Q.put(frame[0])
+            else:
+                return self.Q.put(frame)
         else:
             raise QueueOverflow
 
@@ -116,6 +123,9 @@ class VideoWriterFast:
         self.stopped = True
         # wait until stream resources are released (producer thread might be still grabbing frame)
         self.thread.join()
+        if self.frame_ts:
+            with open(self.video_path.replace('.mp4', '.txt'), 'w') as f:
+                json.dump(self.frame_ts, f)
 
     def get_state(self):
         state = f'Queue {self.Q.qsize()}/{self.queue_size};'

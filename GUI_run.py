@@ -1,5 +1,5 @@
 """
-Tool to record videos from multiple Basler cameras synchronously. Based on RecTool by Christian
+Tool to record videos from multiple Basler cameras synchronously. Based on RecTool by Christian.
 
 Author: Artur artur.schneider@biologie.uni-freiburg.de
 
@@ -10,10 +10,8 @@ Planned features:
 - implement hardware trigger control !
 
 TODO:
-- disable colormode selection while running
 - test recording speeds / loosing frames
 - test hardware triggering
-- access frame timepoints and save thos somehow
 """
 
 import json
@@ -21,17 +19,16 @@ import logging
 import sys
 import time
 
-import numpy as np
-from queue import Queue, Empty
-from threading import Event, Thread
+
+from queue import Empty
+from threading import Event
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
-from PyQt6.QtCore import Qt, QTimer, QThread
+from PyQt6.QtCore import QTimer
 from PyQt6 import uic, QtGui, QtSerialPort
-import pyqtgraph as pg
+
 
 from pathlib import Path
-from datetime import datetime
 from core.Recorder_my import Recorder
 from ImageViewer import SingleCamViewer, RemoteConnDialog
 from utils.StitchedImage import StitchedImage
@@ -42,10 +39,11 @@ log.setLevel(logging.DEBUG)
 
 # logging.basicConfig(filename='GUI_run.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.4.0"
+VERSION = "0.4.2"
 HOST = "localhost"  # if connecting to remote, use the IP of the current machine
 PORT = 8880
 USE_ARDUINO_TRIGGER = False
+
 
 class BASLER_GUI(QMainWindow):
     def __init__(self):
@@ -154,6 +152,10 @@ class BASLER_GUI(QMainWindow):
         self.ShowSingleCamButton.setEnabled(False)
         self.FrameRateSpin.setEnabled(False)  # or implement on the go change of the framerate...
 
+        for color_mode in self.CameraSettings2.color_mode_list:
+            color_mode.setEnabled(False)
+
+
         #create a time that executes the trigger after 500 ms delay to make sure cameras are ready
         if self.trigger and use_hw_trigger:
             self.trigger.fps = self.FrameRateSpin.value()
@@ -203,12 +205,15 @@ class BASLER_GUI(QMainWindow):
 
     def start_recording(self):
         self.stop_event = Event()
-        self.session_id = self.SessionIDlineEdit.text()
+        session_id = self.SessionIDlineEdit.text()
+        if session_id:
+            self.session_id = session_id
         self.basler_recorder.fps = self.FrameRateSpin.value()
         self.basler_recorder.codec = self.Codec_comboBox.currentText()
         self.basler_recorder.crf = self.crf_spinBox.value()
         self.number_cams = self.basler_recorder.cam_array.GetSize()
         use_hw_trigger = self.HWTrig_checkBox.isChecked()
+
         self.basler_recorder.run_multi_cam_record(self.stop_event, filename=self.session_id,
                                                   use_hw_trigger=use_hw_trigger)
 
@@ -280,6 +285,9 @@ class BASLER_GUI(QMainWindow):
             self.SettingsSaveButton.setEnabled(True)
             self.SettingsLoadButton.setEnabled(True)
             self.FrameRateSpin.setEnabled(True)
+
+        for color_mode in self.CameraSettings2.color_mode_list:
+            color_mode.setEnabled(True)
 
     def show_single_cam(self):
         """
@@ -628,6 +636,7 @@ class BASLER_GUI(QMainWindow):
         # check if recording is running stop if does.
         # close and realize cameras
         self.stop_cams()  # stop any grabbing still ongoing
+        self.socket_comm.close_socket()
         if self.basler_recorder.cam_array:  # close cameras if those were open
             self.basler_recorder.cam_array.Close()
         pass
@@ -637,10 +646,13 @@ class BASLER_GUI(QMainWindow):
         Overloaded close event to make sure that all cameras are closed and all threads are stopped
         """
         self.log.info("Received window close event.")
-        if self.basler_recorder.is_recording:
+        if self.basler_recorder.is_recording or self.is_remote_ctr:
+            message_text = "Recording still running. Abort ?" if self.basler_recorder.is_recording \
+                else "Remote mode is active. Abort ?"
+
             message = QMessageBox.information(self,
-                                              "Recording is active",
-                                              "Recording still running. Abort ?",
+                                              "Really quit?",
+                                              message_text,
                                               buttons=QMessageBox.StandardButton.No | QMessageBox.StandardButton.Yes)
             if message == QMessageBox.StandardButton.No:
                 self.log.info('pressed no')
