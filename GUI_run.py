@@ -32,7 +32,7 @@ from pathlib import Path
 from core.Recorder_my import Recorder
 from ImageViewer import SingleCamViewer, RemoteConnDialog
 from utils.StitchedImage import StitchedImage
-from utils.socket_utils import SocketComm
+from utils.socket_utils import SocketComm, SocketMessage, MessageStatus, MessageType
 from core.Trigger import TriggerArduino
 log = logging.getLogger('main')
 log.setLevel(logging.DEBUG)
@@ -43,11 +43,14 @@ VERSION = "0.4.2"
 HOST = "localhost"  # if connecting to remote, use the IP of the current machine
 PORT = 8880
 USE_ARDUINO_TRIGGER = False
-
+CALIB_DURATION = 30000
+CALIB_WAIT = 10000
 
 class BASLER_GUI(QMainWindow):
     def __init__(self):
         super(BASLER_GUI, self).__init__()
+        self.calib_start_timer = None
+        self.calib_stop_timer = None
         self.trigger_timer = None
         self.session_id = "test_sess"
         self.single_camviewer = None
@@ -245,10 +248,32 @@ class BASLER_GUI(QMainWindow):
             self.trigger_timer.timeout.connect(self.trigger.start)
             self.trigger_timer.start(500)
 
+    def start_recording_calib(self):
+        self.HWTrig_checkBox.setChecked(True)  # making sure calib mode is on
+        self.log.info(f'Started Calibration sequence..\nwaiting for {CALIB_WAIT}s to start recording')
+        # set a timer to start recording with some waiting time
+        self.calib_start_timer = QTimer()
+        self.calib_start_timer.setSingleShot(True)
+        self.calib_start_timer.timeout.connect(self.start_recording)
+        self.calib_start_timer.start(CALIB_WAIT)
+
+        # set a timer to stop recording after some time
+        self.calib_stop_timer = QTimer()
+        self.calib_stop_timer.setSingleShot(True)
+        self.calib_stop_timer.timeout.connect(self.stop_cams)
+        self.calib_stop_timer.start(CALIB_DURATION+CALIB_WAIT)
+        self.log.info(f'Calibration recording will stop after {CALIB_DURATION+CALIB_WAIT}s')
+
     def stop_cams(self):
         if self.stop_event:
             self.stop_event.set()
         self.log.debug('Stopping grabbing')
+
+        if self.calib_start_timer:  #delete timers
+            self.calib_start_timer = None
+        if self.calib_stop_timer:
+            self.calib_stop_timer = None
+
         # self.basler_recorder.single_view_queue.join() # as this its not being emptied in a thread.. queue is not emptied but stucks here
         if self.single_view_timer:
             self.single_view_timer.stop()
@@ -499,7 +524,7 @@ class BASLER_GUI(QMainWindow):
 
         self.Save_pathButton.clicked.connect(self.set_save_path)
         self.RemoteModeButton.clicked.connect(self.remote_mode)
-
+        self.REC_calib_Button.clicked.connect(self.start_recording_calib)
 
     def remote_mode(self):
         if not self.socket_comm.connected:
@@ -542,7 +567,7 @@ class BASLER_GUI(QMainWindow):
         self.remote_message_timer.timeout.connect(self.check_and_parse_messages)
         self.remote_message_timer.start(500)
         self.is_remote_ctr = True
-        self.socket_comm._send(json.dumps({"type": "status", "status": "ready"}).encode())
+        self.socket_comm.send_json_message(SocketMessage.status_ready)
 
     def exit_remote_mode(self):
         self.socket_comm.close_socket()
@@ -573,12 +598,16 @@ class BASLER_GUI(QMainWindow):
         self.FlipYButton.setEnabled(True)
         self.SessionIDlineEdit.setEnabled(True)
         self.SessionIDlineEdit.setText("")
+
     def check_and_parse_messages(self):
         message = self.socket_comm.read_json_message_fast()
         if message:
             # parse message
-            if message['type'] == 'start_rec':
-                self.log.info("got message to start recording")
+            if message['type'] == MessageType.start_video_rec.value \
+                    or message['type'] == MessageType.start_video_view.value \
+                    or message['type'] == MessageType.start_video_calibrec.value:
+
+               # combined for rec types
                 try:
                     if message["setting_file"]:
                         self.load_settings(message["setting_file"])
@@ -586,51 +615,45 @@ class BASLER_GUI(QMainWindow):
                 except (FileNotFoundError, KeyError):
                     self.log.error("passed settings file not found")
 
-                self.session_name = message["session_id"]
-                self.SessionIDlineEdit.setText(self.session_name)
-                self.remote_message_timer.setInterval(10000)  # increase the interval to 10s
-                self.start_recording()
-                response = {"type": "response", "status": "recording_ok"}
-                self.socket_comm._send(json.dumps(response).encode())
-
-            elif message['type'] == 'stop':
-                self.log.info("got message to stop")
-                self.stop_cams()
-                self.remote_message_timer.setInterval(500)
-                response = {"type": "response", "status": "stop_ok"}
-                self.socket_comm._send(json.dumps(response).encode())
-
-            elif message['type'] == 'status_poll':
-                if self.basler_recorder.is_recording:
-                    response = {"type": "status", "status": "recording"}
-                elif self.basler_recorder.is_viewing:
-                    response = {"type": "status", "status": "viewing"}
-                elif self.is_remote_ctr:
-                    response = {"type": "status", "status": "ready"}
-                else:
-                    response = {"type": "status", "status": "error"}
-                self.socket_comm._send(json.dumps(response).encode())
-
-            elif message['type'] == 'start_run':
-                self.log.info("got message to start viewing")
-                try:
-                    if message["setting_file"]:
-                        self.load_settings(message["setting_file"])
-                except (FileNotFoundError, KeyError):
-                    self.log.error("passed settings file not found")
-
                 self.session_id = message["session_id"]
                 self.SessionIDlineEdit.setText(self.session_id)
-
                 try:
                     if message["frame_rate"]:
                         self.FrameRateSpin.setValue(message["frame_rate"])
                 except KeyError:
                     pass
                 self.remote_message_timer.setInterval(10000)  # increase the interval to 10s
-                self.run_cams()
-                response = {"type": "response", "status": "run_ok"}
-                self.socket_comm._send(json.dumps(response).encode())
+
+                if message['type'] == MessageType.start_video_rec.value:
+                    self.log.info("got message to start recording")
+                    self.start_recording()
+                    self.socket_comm.send_json_message(SocketMessage.respond_recording)
+
+                elif message['type'] == MessageType.start_video_view.value:
+                    self.log.info("got message to start viewing")
+                    self.run_cams()
+                    self.socket_comm.send_json_message(SocketMessage.respond_viewing)
+
+                elif message['type'] == MessageType.start_video_calibrec.value:
+                    self.log.info("got message to start calibration_rec")
+                    self.start_recording_calib()
+                    self.socket_comm.send_json_message(SocketMessage.respond_calib)
+
+            elif message['type'] == MessageType.stop_video.value:
+                self.log.info("got message to stop")
+                self.stop_cams()
+                self.remote_message_timer.setInterval(500)
+                self.socket_comm.send_json_message(SocketMessage.respond_stop)
+
+            elif message['type'] == MessageType.poll_status.value:
+                if self.basler_recorder.is_recording:
+                    self.socket_comm.send_json_message(SocketMessage.status_recording)
+                elif self.basler_recorder.is_viewing:
+                    self.socket_comm.send_json_message(SocketMessage.status_viewing)
+                elif self.is_remote_ctr:
+                    self.socket_comm.send_json_message(SocketMessage.status_ready)
+                else:
+                    self.socket_comm.send_json_message(SocketMessage.status_error)
 
     def app_is_exiting(self):
         # check if recording is running stop if does.
