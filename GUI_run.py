@@ -606,6 +606,11 @@ class BASLER_GUI(QMainWindow):
             if message['type'] == MessageType.start_video_rec.value \
                     or message['type'] == MessageType.start_video_view.value \
                     or message['type'] == MessageType.start_video_calibrec.value:
+                if self.basler_recorder.is_recording or self.basler_recorder.is_viewing:
+                    # got record but we already are !
+                    self.socket_comm.send_json_message(SocketMessage.status_error)
+                    self.log.info("got message to start, but something is already running!")
+                    return
 
                # combined for rec types
                 try:
