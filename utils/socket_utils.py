@@ -146,6 +146,7 @@ class SocketComm:
         self.log = logging.getLogger(f"SocketComm_{self.type}")
         self.log.setLevel(logging.DEBUG)
         self.message_time = time.monotonic()
+
     def create_socket(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.type == 'client':
@@ -157,6 +158,7 @@ class SocketComm:
                 self._ssl_sock = self.context.wrap_socket(self._sock, server_side=True, do_handshake_on_connect=False)
 
     def accept_connection(self):
+        self.create_socket()
         while not self.stop_event.is_set():
             if time.monotonic() - self.message_time > 5:
                 self.message_time = time.monotonic()
@@ -235,6 +237,8 @@ class SocketComm:
     def read_json_message_fast(self) -> dict:
         try:
             message = self._recv(1024)
+            if message == -1:
+                return SocketMessage.client_disconnected
             if message is not None:
                 message = json.loads(message.decode())
             else:
@@ -263,7 +267,7 @@ class SocketComm:
         except ConnectionResetError:
             self.log.error("Connection reset by peer")
 
-    def _recv(self, size) -> bytes:
+    def _recv(self, size) -> (bytes, int):
         try:
             if self.use_ssl:
                 return self.ssl_sock.recv(size)
@@ -271,6 +275,9 @@ class SocketComm:
                 return self.sock.recv(size)
         except socket.timeout:
             return None
+        except ConnectionResetError:
+            self.log.warning("Client disconnected")
+            return -1
 
     def _recv_until(self, delimiter) -> bytes:
         data = b''

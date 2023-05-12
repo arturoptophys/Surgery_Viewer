@@ -385,7 +385,7 @@ Savepath</string>
    </widget>
    <widget class="QPushButton" name="REC_calib_Button">
     <property name="enabled">
-     <bool>true</bool>
+     <bool>false</bool>
     </property>
     <property name="geometry">
      <rect>
@@ -571,6 +571,7 @@ REMOTE mode</string>
    <zorder>label_5</zorder>
    <zorder>FrameRateSpin</zorder>
    <zorder>Devices_textEdit</zorder>
+   <zorder>ViewWidget_1</zorder>
    <zorder>AutoExposeButton</zorder>
    <zorder>AutoGainButton</zorder>
    <zorder>WhiteBalanceButton</zorder>
@@ -578,8 +579,16 @@ REMOTE mode</string>
    <zorder>FlipXButton</zorder>
    <zorder>FlipYButton</zorder>
    <zorder>ShowSingleCamButton</zorder>
+   <zorder>ViewWidget_2</zorder>
+   <zorder>ViewWidget_3</zorder>
+   <zorder>ViewWidget_4</zorder>
+   <zorder>ViewWidget_6</zorder>
    <zorder>HWTrig_checkBox</zorder>
    <zorder>DisableViz_checkBox</zorder>
+   <zorder>ViewWidget_5</zorder>
+   <zorder>ViewWidget_7</zorder>
+   <zorder>ViewWidget_8</zorder>
+   <zorder>ViewWidget_9</zorder>
    <zorder>ExtraWindowButton</zorder>
    <zorder>MultiViewWidget</zorder>
    <zorder>CameraSettings2</zorder>

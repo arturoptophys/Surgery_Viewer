@@ -39,12 +39,14 @@ log.setLevel(logging.DEBUG)
 
 # logging.basicConfig(filename='GUI_run.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.4.2"
+VERSION = "0.4.9"
 HOST = "localhost"  # if connecting to remote, use the IP of the current machine
-PORT = 8880
+PORT = 8881
 USE_ARDUINO_TRIGGER = False
 CALIB_DURATION = 30000
 CALIB_WAIT = 10000
+ENABLE_REMOTE = True
+
 
 class BASLER_GUI(QMainWindow):
     def __init__(self):
@@ -82,8 +84,14 @@ class BASLER_GUI(QMainWindow):
         self.ConnectSignals()
         self.basler_recorder = Recorder()
         self.scan_cams()
-        self.socket_comm = SocketComm(type='server', host=HOST, port=PORT)
-        self.socket_comm.create_socket()
+
+        if ENABLE_REMOTE:
+            self.socket_comm = SocketComm(type='server', host=HOST, port=PORT)
+        else:  # disable remote mode
+            self.socket_comm = None
+            self.RemoteModeButton.deleteLater()
+            self.Client_label.deleteLater()
+
         self.is_remote_ctr = False
         if USE_ARDUINO_TRIGGER:
             serial_port = f"/dev/{QtSerialPort.QSerialPortInfo.availablePorts()[0].portName()}"
@@ -105,7 +113,8 @@ class BASLER_GUI(QMainWindow):
             self.ScanDevButton.setEnabled(False)
         else:
             self.Devices_textEdit.clear()
-            self.Devices_textEdit.setText(f"Found no cameras !!")
+            self.Devices_textEdit.setText(f"Found no cameras !!\n (Re-)Connect a camera and try again.")
+
         self.MultiViewWidget.num_cameras = nr_cams
         self.CameraSettings2.num_cameras = nr_cams
 
@@ -134,7 +143,8 @@ class BASLER_GUI(QMainWindow):
         self.CameraSettings2.toolbox.setCurrentIndex(0)
         self.RUNButton.setEnabled(True)
         self.RECButton.setEnabled(True)
-        self.RemoteModeButton.setEnabled(True)
+        if ENABLE_REMOTE:
+            self.RemoteModeButton.setEnabled(True)
         self.ConnectButton.setEnabled(False)
 
     def run_cams(self):
@@ -523,7 +533,8 @@ class BASLER_GUI(QMainWindow):
         self.ShowSingleCamButton.clicked.connect(self.show_single_cam)
 
         self.Save_pathButton.clicked.connect(self.set_save_path)
-        self.RemoteModeButton.clicked.connect(self.remote_mode)
+        if ENABLE_REMOTE:
+            self.RemoteModeButton.clicked.connect(self.remote_mode)
         self.REC_calib_Button.clicked.connect(self.start_recording_calib)
 
     def remote_mode(self):
@@ -660,11 +671,17 @@ class BASLER_GUI(QMainWindow):
                 else:
                     self.socket_comm.send_json_message(SocketMessage.status_error)
 
+            elif message['type'] == MessageType.disconnected.value:
+                self.log.info("got message that client disconnected")
+                self.exit_remote_mode()
+
+
     def app_is_exiting(self):
         # check if recording is running stop if does.
         # close and realize cameras
         self.stop_cams()  # stop any grabbing still ongoing
-        self.socket_comm.close_socket()
+        if self.socket_comm:
+            self.socket_comm.close_socket()
         if self.basler_recorder.cam_array:  # close cameras if those were open
             self.basler_recorder.cam_array.Close()
         pass
