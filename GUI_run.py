@@ -13,12 +13,11 @@ TODO:
 - test recording speeds / loosing frames
 - test hardware triggering
 """
-
+import datetime
 import json
 import logging
 import sys
 import time
-
 
 from queue import Empty
 from threading import Event
@@ -27,24 +26,25 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
 from PyQt6.QtCore import QTimer
 from PyQt6 import uic, QtGui, QtSerialPort
 
-
 from pathlib import Path
 from core.Recorder_my import Recorder
 from ImageViewer import SingleCamViewer, RemoteConnDialog
 from utils.StitchedImage import StitchedImage
 from utils.socket_utils import SocketComm, SocketMessage, MessageStatus, MessageType
 from core.Trigger import TriggerArduino
+
 log = logging.getLogger('main')
 log.setLevel(logging.DEBUG)
 
-# logging.basicConfig(filename='GUI_run.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename=f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.4.9"
+VERSION = "0.4.10"
 HOST = "localhost"  # if connecting to remote, use the IP of the current machine
 PORT = 8881
 USE_ARDUINO_TRIGGER = False
 CALIB_DURATION = 30000
 CALIB_WAIT = 10000
+SAVE_TIMESTAMPS = False
 ENABLE_REMOTE = True
 
 
@@ -79,10 +79,11 @@ class BASLER_GUI(QMainWindow):
         self.ShowSingleCamButton.setIcon(QtGui.QIcon("GUI/icons/Camera.svg"))
         self.FlipXButton.setIcon(QtGui.QIcon("GUI/icons/ArrowsRightLeft.svg"))
         self.FlipYButton.setIcon(QtGui.QIcon("GUI/icons/ArrowsUpDown.svg"))
-        #self.CameraSettings2.toolbox.setIcon(QtGui.QIcon("GUI/icons/AdjustmentsHorizontal.svg"))
+        self.Rec_status.setPixmap(QtGui.QIcon("GUI/icons/VideoCameraSlash.svg").pixmap(64))
+        # self.CameraSettings2.toolbox.setIcon(QtGui.QIcon("GUI/icons/AdjustmentsHorizontal.svg"))
 
         self.ConnectSignals()
-        self.basler_recorder = Recorder()
+        self.basler_recorder = Recorder(write_timestamps=SAVE_TIMESTAMPS)
         self.scan_cams()
 
         if ENABLE_REMOTE:
@@ -95,7 +96,7 @@ class BASLER_GUI(QMainWindow):
         self.is_remote_ctr = False
         if USE_ARDUINO_TRIGGER:
             serial_port = f"/dev/{QtSerialPort.QSerialPortInfo.availablePorts()[0].portName()}"
-            #TODO for windows use the port name
+            # TODO for windows use the port name
             self.trigger = TriggerArduino(serial_port)
         else:
             self.trigger = None
@@ -164,12 +165,13 @@ class BASLER_GUI(QMainWindow):
         self.RECButton.setEnabled(False)
         self.ShowSingleCamButton.setEnabled(False)
         self.FrameRateSpin.setEnabled(False)  # or implement on the go change of the framerate...
-
+        self.Rec_status.setPixmap(QtGui.QIcon("GUI/icons/VideoCamera.svg").pixmap(64))
+        # change the pixmap color to green
+        self.Rec_status.setStyleSheet("background-color: rgb(0, 255, 0);")
         for color_mode in self.CameraSettings2.color_mode_list:
             color_mode.setEnabled(False)
 
-
-        #create a time that executes the trigger after 500 ms delay to make sure cameras are ready
+        # create a time that executes the trigger after 500 ms delay to make sure cameras are ready
         if self.trigger and use_hw_trigger:
             self.trigger.fps = self.FrameRateSpin.value()
             self.trigger_timer = QTimer()
@@ -190,13 +192,19 @@ class BASLER_GUI(QMainWindow):
             # self.log.debug(f"Nr elements in q {self.basler_recorder.single_view_queue.qsize()}")
             # t0 = time.monotonic()
             # stitched_image = StitchedImage(image_list).image
-            #print(f'It took {(time.monotonic() - t0):0.3f} s to put all images up')
+            # print(f'It took {(time.monotonic() - t0):0.3f} s to put all images up')
         except Empty:
             return
-        writerstatus = f"\tVideoWriter {self.basler_recorder.video_writer_list[0].get_state()}" if len(self.basler_recorder.video_writer_list)>1 else "not recording"
-        self.statusbar.showMessage(f"In Q :{self.basler_recorder.multi_view_queue[0].qsize()}"
-                                   f"/In Q2: {self.basler_recorder.multi_view_queue[1].qsize()}"
-                                   f"{writerstatus}")
+
+        writerstatus = f"\tVideoWriter {self.basler_recorder.video_writer_list[0].get_state()}" if len(
+            self.basler_recorder.video_writer_list) >= 1 else "not recording"
+
+        display_string = ""
+        for i in range(len(self.basler_recorder.multi_view_queue)):
+            display_string += f"Q{i}: {self.basler_recorder.multi_view_queue[i].qsize()}"
+        display_string += f"{writerstatus}"
+
+        self.statusbar.showMessage(display_string)
         # self.ViewWidget.updateView(currentImg)
         # self.ViewWidget.updateView(stitched_image)
 
@@ -249,8 +257,11 @@ class BASLER_GUI(QMainWindow):
         self.SettingsSaveButton.setEnabled(False)
         self.SettingsLoadButton.setEnabled(False)
         self.FrameRateSpin.setEnabled(False)
+        self.Rec_status.setPixmap(QtGui.QIcon("GUI/icons/VideoCamera.svg").pixmap(64))
+        # change the pixmap color to red
+        self.Rec_status.setStyleSheet("background-color: rgb(255, 0, 0);")
 
-        #create a time that executes the trigger after 500 ms delay to make sure cameras are ready
+        # create a time that executes the trigger after 500 ms delay to make sure cameras are ready
         if self.trigger and use_hw_trigger:
             self.trigger.fps = self.FrameRateSpin.value()
             self.trigger_timer = QTimer()
@@ -271,15 +282,18 @@ class BASLER_GUI(QMainWindow):
         self.calib_stop_timer = QTimer()
         self.calib_stop_timer.setSingleShot(True)
         self.calib_stop_timer.timeout.connect(self.stop_cams)
-        self.calib_stop_timer.start(CALIB_DURATION+CALIB_WAIT)
-        self.log.info(f'Calibration recording will stop after {CALIB_DURATION+CALIB_WAIT}s')
+        self.calib_stop_timer.start(CALIB_DURATION + CALIB_WAIT)
+        self.log.info(f'Calibration recording will stop after {CALIB_DURATION + CALIB_WAIT}s')
+        self.Rec_status.setPixmap(QtGui.QIcon("GUI/icons/VideoCamera.svg").pixmap(64))
+        # change the pixmap color to red
+        self.Rec_status.setStyleSheet("background-color: rgb(125, 0, 255);")
 
     def stop_cams(self):
         if self.stop_event:
             self.stop_event.set()
         self.log.debug('Stopping grabbing')
 
-        if self.calib_start_timer:  #delete timers
+        if self.calib_start_timer:  # delete timers
             self.calib_start_timer = None
         if self.calib_stop_timer:
             self.calib_stop_timer = None
@@ -305,6 +319,9 @@ class BASLER_GUI(QMainWindow):
         # do i want to show remaining images ? not really..
         # maybe instead add an indicator of how many frames are in buffer ?
         self.STOPButton.setEnabled(False)
+        self.Rec_status.setPixmap(QtGui.QIcon("GUI/icons/VideoCameraSlash.svg").pixmap(64))
+        # change the pixmap color back to none
+        self.Rec_status.setStyleSheet("background-color: none")
         if not self.is_remote_ctr:
             self.RUNButton.setEnabled(True)
             self.RECButton.setEnabled(True)
@@ -387,7 +404,7 @@ class BASLER_GUI(QMainWindow):
                           "crf": self.crf_spinBox.value()})
 
         # open file dialog for where to save
-        settings_file = QFileDialog.getSaveFileName(self,'Save settings file', "",
+        settings_file = QFileDialog.getSaveFileName(self, 'Save settings file', "",
                                                     "Settings files name (*.settings.json)")
         if settings_file[0]:
             filename = settings_file[0]
@@ -447,6 +464,7 @@ class BASLER_GUI(QMainWindow):
         if save_path:
             self.basler_recorder.save_path = save_path
             self.log.debug(f'Save path set to {save_path}')
+            self.SavePath_label.setText(f'Save path:\n{save_path}')
 
     ## IMAGE CONTROL ####
     def get_current_tab(self) -> int:
@@ -459,7 +477,7 @@ class BASLER_GUI(QMainWindow):
         if self.All_cams_checkBox.isChecked():
             for current_camid in range(len(self.basler_recorder.cam_array)):
                 final_exp = self.basler_recorder.run_auto_exposure(current_camid)
-                #todo block triggerign of setting values !
+                # todo block triggerign of setting values !
                 self.CameraSettings2.exposure_spin_list[current_camid].setValue(final_exp)
         else:
             current_camid = self.get_current_tab()
@@ -493,11 +511,11 @@ class BASLER_GUI(QMainWindow):
         gain = self.CameraSettings2.gain_spin_list[current_camid].value()
         self.basler_recorder.set_gain_exposure(current_camid, gain, exp_time)
 
-    def set_color_mode(self, color_mode:str):
+    def set_color_mode(self, color_mode: str):
         """set the gain and exposure time for the current camera"""
         current_camid = self.get_current_tab()
         self.basler_recorder.set_color_mode(current_camid, color_mode)
-        #exp_time = self.CameraSettings2.exposure_spin_list[current_camid]
+        # exp_time = self.CameraSettings2.exposure_spin_list[current_camid]
 
     def flip_x(self):
         """
@@ -623,7 +641,7 @@ class BASLER_GUI(QMainWindow):
                     self.log.info("got message to start, but something is already running!")
                     return
 
-               # combined for rec types
+                # combined for rec types
                 try:
                     if message["setting_file"]:
                         self.load_settings(message["setting_file"])
@@ -674,7 +692,6 @@ class BASLER_GUI(QMainWindow):
             elif message['type'] == MessageType.disconnected.value:
                 self.log.info("got message that client disconnected")
                 self.exit_remote_mode()
-
 
     def app_is_exiting(self):
         # check if recording is running stop if does.

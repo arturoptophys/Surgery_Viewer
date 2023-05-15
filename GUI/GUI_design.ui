@@ -143,7 +143,7 @@ Devices</string>
     <property name="geometry">
      <rect>
       <x>350</x>
-      <y>100</y>
+      <y>80</y>
       <width>111</width>
       <height>16</height>
      </rect>
@@ -162,7 +162,7 @@ Devices</string>
     <property name="geometry">
      <rect>
       <x>350</x>
-      <y>120</y>
+      <y>100</y>
       <width>81</width>
       <height>31</height>
      </rect>
@@ -403,8 +403,8 @@ Calibration</string>
    <widget class="QSpinBox" name="crf_spinBox">
     <property name="geometry">
      <rect>
-      <x>600</x>
-      <y>70</y>
+      <x>650</x>
+      <y>150</y>
       <width>71</width>
       <height>26</height>
      </rect>
@@ -418,8 +418,8 @@ Calibration</string>
    <widget class="QComboBox" name="Codec_comboBox">
     <property name="geometry">
      <rect>
-      <x>550</x>
-      <y>40</y>
+      <x>600</x>
+      <y>120</y>
       <width>121</width>
       <height>25</height>
      </rect>
@@ -433,8 +433,8 @@ Calibration</string>
    <widget class="QLabel" name="label">
     <property name="geometry">
      <rect>
-      <x>500</x>
-      <y>40</y>
+      <x>550</x>
+      <y>120</y>
       <width>67</width>
       <height>17</height>
      </rect>
@@ -451,8 +451,8 @@ Calibration</string>
    <widget class="QLabel" name="label_2">
     <property name="geometry">
      <rect>
-      <x>500</x>
-      <y>70</y>
+      <x>550</x>
+      <y>150</y>
       <width>31</width>
       <height>17</height>
      </rect>
@@ -469,8 +469,8 @@ Calibration</string>
    <widget class="QLabel" name="label_3">
     <property name="geometry">
      <rect>
-      <x>500</x>
-      <y>10</y>
+      <x>550</x>
+      <y>90</y>
       <width>211</width>
       <height>17</height>
      </rect>
@@ -561,6 +561,66 @@ REMOTE mode</string>
      <string>Video name prefix:</string>
     </property>
    </widget>
+   <widget class="QLabel" name="Rec_status">
+    <property name="geometry">
+     <rect>
+      <x>590</x>
+      <y>270</y>
+      <width>71</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QSlider" name="horizontalSlider">
+    <property name="geometry">
+     <rect>
+      <x>350</x>
+      <y>130</y>
+      <width>141</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="minimum">
+     <number>1</number>
+    </property>
+    <property name="maximum">
+     <number>160</number>
+    </property>
+    <property name="value">
+     <number>10</number>
+    </property>
+    <property name="orientation">
+     <enum>Qt::Horizontal</enum>
+    </property>
+    <property name="tickPosition">
+     <enum>QSlider::TicksAbove</enum>
+    </property>
+    <property name="tickInterval">
+     <number>20</number>
+    </property>
+   </widget>
+   <widget class="QLabel" name="SavePath_label">
+    <property name="geometry">
+     <rect>
+      <x>340</x>
+      <y>50</y>
+      <width>321</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>8</pointsize>
+      <bold>false</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
    <zorder>SettingsSaveButton</zorder>
    <zorder>SettingsLoadButton</zorder>
    <zorder>ScanDevButton</zorder>
@@ -571,7 +631,6 @@ REMOTE mode</string>
    <zorder>label_5</zorder>
    <zorder>FrameRateSpin</zorder>
    <zorder>Devices_textEdit</zorder>
-   <zorder>ViewWidget_1</zorder>
    <zorder>AutoExposeButton</zorder>
    <zorder>AutoGainButton</zorder>
    <zorder>WhiteBalanceButton</zorder>
@@ -579,16 +638,8 @@ REMOTE mode</string>
    <zorder>FlipXButton</zorder>
    <zorder>FlipYButton</zorder>
    <zorder>ShowSingleCamButton</zorder>
-   <zorder>ViewWidget_2</zorder>
-   <zorder>ViewWidget_3</zorder>
-   <zorder>ViewWidget_4</zorder>
-   <zorder>ViewWidget_6</zorder>
    <zorder>HWTrig_checkBox</zorder>
    <zorder>DisableViz_checkBox</zorder>
-   <zorder>ViewWidget_5</zorder>
-   <zorder>ViewWidget_7</zorder>
-   <zorder>ViewWidget_8</zorder>
-   <zorder>ViewWidget_9</zorder>
    <zorder>ExtraWindowButton</zorder>
    <zorder>MultiViewWidget</zorder>
    <zorder>CameraSettings2</zorder>
@@ -603,6 +654,9 @@ REMOTE mode</string>
    <zorder>Client_label</zorder>
    <zorder>SessionIDlineEdit</zorder>
    <zorder>label_4</zorder>
+   <zorder>Rec_status</zorder>
+   <zorder>horizontalSlider</zorder>
+   <zorder>SavePath_label</zorder>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionsaveSettings">
@@ -634,5 +688,38 @@ REMOTE mode</string>
   </customwidget>
  </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>horizontalSlider</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>FrameRateSpin</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>531</x>
+     <y>136</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>404</x>
+     <y>130</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>FrameRateSpin</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>horizontalSlider</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>402</x>
+     <y>144</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>535</x>
+     <y>146</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

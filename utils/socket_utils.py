@@ -217,10 +217,12 @@ class SocketComm:
         if self.use_ssl:
             if self.ssl_sock:
                 self.ssl_sock.close()
-            self._ssl_sock.close()
+            if self._ssl_sock:
+                self._ssl_sock.close()
         if self.sock:
             self.sock.close()
-        self._sock.close()
+        if self._sock:
+            self._sock.close()
         self.connected = False
 
     def read_json_message(self) -> dict:
