@@ -1,37 +1,42 @@
-# RecordTool
+# FreiPose_Recorder 
+Based on RecordTool by Christian https://github.com/lmb-freiburg/RecordTool
 
-This is the recording software developed in conjunction with our recent publication
-
-    @TechReport{Freipose2020,
-        author    = {Christian Zimmermann, Artur Schneider, Mansour Alyahyay, Thomas Brox and Ilka Diester},
-        title     = {FreiPose: A Deep Learning Framework for Precise Animal Motion Capture in 3D Spaces},
-        year      = {2020},
-        url          = {"https://lmb.informatik.uni-freiburg.de/projects/freipose/"}
-    }
-
-It allows to record synchronous video from a multi camera rig using Basler cameras and an Arduino for trigger generation.
+It allows to record synchronous video from a multi camera rig using Basler cameras and an Arduino or MCC-DAQ for trigger generation.
+It includes a GUI for visualization of video streams as well as changing camera settings.
+GUI can be used in remote mode and be controlled via TCP/IP.
 
 ## Installation guide
-Select suitable release of Pylon's Python Bindings from:
-    https://github.com/Basler/pypylon/releases
+Select and install suitable release of Pylon's libraies from:
+    https://www.baslerweb.com/de/downloads/downloads-software/#type=pylonsoftware
 
-I chose 'pypylon-1.4.0-cp36-cp36m-linux_x86_64.whl' because I want to use python3.6 and have a Linux machine with 64bit.
+(Optional) Create and activate a conda environment
 
-    pip install ~/libs/pypylon-1.4.0-cp36-cp36m-linux_x86_64.whl
-    pip3 install scipy Pillow numpy opencv-python progressbar pyserial
+    conda env create -n Recorder_env python=3.9
+    conda activate Recorder_env
 
-Add your cameras to config/camera_names.py. This gives your cameras unique names. (we already did that for our cams)
+Install the following python packages (preferably in a virtual environment):
+
+    git clone https://github.com/Optophys-Lab/FreiPose_Recorder.git
+    cd FreiPose_Recorder
+    pip install -e .
+
+To Run the GUI from the commandline:
+
+    #make sure conda env is activated
+    #make sure $CWD is FreiPose_Recorder
+    python GUI_run.py
+
 
 ## User guide
 
+Add your cameras to configs.camera_enum.py. This gives your cameras unique names.
+
 Start the RecordTool
     
-    python3.6 run.py
-    
-Use 'h' + Enter to get help.
+    python GUI_run.py    
+
 
 Convert recorded videos to single frames
-
 
     python vid2frames.py recordings/take00/run000_cam5.avi --out-path ./recordings_frames/
 
