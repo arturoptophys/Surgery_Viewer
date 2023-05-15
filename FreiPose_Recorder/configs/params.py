@@ -1,4 +1,4 @@
-from utils.VideoWriterFast import codec_t
+from FreiPose_Recorder.utils.VideoWriterFast import codec_t
 
 
 class params_t:

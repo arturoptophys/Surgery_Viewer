@@ -13,6 +13,7 @@ TODO:
 - test recording speeds / loosing frames
 - test hardware triggering
 """
+
 import datetime
 import json
 import logging

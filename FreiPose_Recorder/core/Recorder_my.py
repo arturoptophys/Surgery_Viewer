@@ -1,13 +1,10 @@
 import logging, random
-import os
-import threading
 # import cv2
 import time
 import datetime
 from pathlib import Path
 
 import numpy as np
-from collections import defaultdict
 from threading import Event, Thread
 from queue import Queue, Full
 
@@ -17,11 +14,11 @@ from pypylon import pylon
 # from utils.general_util import my_mkdir
 # from utils.VideoWriterFast import VideoWriterFast
 
-from utils.VideoWriterFast_gear import VideoWriterFast
-from utils.VideoWriterFast_gear import QueueOverflow
+from FreiPose_Recorder.utils.VideoWriterFast_gear import VideoWriterFast
+from FreiPose_Recorder.utils.VideoWriterFast_gear import QueueOverflow
 # from utils.StitchedImage import StitchedImage  # this is way to slow for real-time application
 
-from configs.camera_enums import CameraIdentificationSN
+from FreiPose_Recorder.configs.camera_enums import CameraIdentificationSN
 
 
 # Another way to get warnings when images are missing ... not used

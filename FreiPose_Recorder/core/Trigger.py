@@ -1,6 +1,6 @@
 import serial
 import time
-from configs.params import params_t
+from FreiPose_Recorder.configs.params import params_t
 
 class TriggerArduino:
     def __init__(self, serial_port):

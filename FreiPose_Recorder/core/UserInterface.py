@@ -1,4 +1,4 @@
-from core.Recorder import Recorder
+from FreiPose_Recorder.core.Recorder import Recorder
 
 class UserInterface(object):
     def __init__(self, verbosity=0):
