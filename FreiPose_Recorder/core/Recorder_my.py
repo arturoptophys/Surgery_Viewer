@@ -65,7 +65,7 @@ class Recorder(object):
         self.single_view_thread = None
         self.single_view_queue = None
         self.cams_connected = False
-        self.cam_array = None
+        self.cam_array = []
         self._verbosity = verbosity
         self.save_path = ""
         # self._camera_info = get_camera_infos()

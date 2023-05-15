@@ -4,7 +4,7 @@
     Author: czimmerm@adobe.com
 """
 import numpy as np
-import scipy.misc
+#import scipy.misc
 import cv2
 from PIL import Image
 
