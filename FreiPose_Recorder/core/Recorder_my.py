@@ -751,6 +751,8 @@ class Recorder(object):
 
         self.cams_context = {}
         self.video_writer_list = list()
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        # to make sure all have the same timestamp
         for c_id, cam in enumerate(self.cam_array):
             if use_hw_trigger:
                 self._config_cams_hw_trigger(cam)
@@ -758,7 +760,7 @@ class Recorder(object):
                 self._config_cams_continuous(cam)
 
             self.cams_context[cam.GetCameraContext()] = c_id
-            video_name = f"{filename}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_" \
+            video_name = f"{filename}_{timestamp}_" \
                          f"{cam.DeviceInfo.GetUserDefinedName()}.mp4"
             video_name = (Path(self.save_path) / video_name).as_posix()
             self.video_writer_list.append(VideoWriterFast(video_name,
