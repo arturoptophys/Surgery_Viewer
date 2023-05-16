@@ -12,6 +12,7 @@ Planned features:
 TODO:
 - test recording speeds / loosing frames
 - test hardware triggering
+- signal to GUI, somwthing went wrong with grabbing and recording is aborted
 """
 
 import datetime
@@ -47,6 +48,8 @@ VERSION = "0.4.12"
 class BASLER_GUI(QMainWindow):
     def __init__(self):
         super(BASLER_GUI, self).__init__()
+        self.timer_update_counter = 0
+        self.rec_start_time = None
         self.calib_start_timer = None
         self.calib_stop_timer = None
         self.trigger_timer = None
@@ -140,6 +143,7 @@ class BASLER_GUI(QMainWindow):
         self.CameraSettings2.toolbox.setCurrentIndex(0)
         self.RUNButton.setEnabled(True)
         self.RECButton.setEnabled(True)
+        self.REC_calib_Button.setEnabled(True)
         if ENABLE_REMOTE:
             self.RemoteModeButton.setEnabled(True)
         self.ConnectButton.setEnabled(False)
@@ -166,7 +170,8 @@ class BASLER_GUI(QMainWindow):
         self.Rec_status.setStyleSheet("background-color: rgb(0, 255, 0);")
         for color_mode in self.CameraSettings2.color_mode_list:
             color_mode.setEnabled(False)
-
+            
+        self.rec_start_time = time.monotonic()
         # create a time that executes the trigger after 500 ms delay to make sure cameras are ready
         if self.trigger and use_hw_trigger:
             self.trigger.fps = self.FrameRateSpin.value()
@@ -175,8 +180,20 @@ class BASLER_GUI(QMainWindow):
             self.trigger_timer.timeout.connect(self.trigger.start)
             self.trigger_timer.start(500)
 
+    def update_rec_timer(self):
+        current_run_time = time.monotonic() - self.rec_start_time
+        if current_run_time >= 60:
+            self.recording_duration_label.setText(f"{(current_run_time // 60):.0f}m:{(current_run_time % 60):2.0f}s")
+        else:
+            self.recording_duration_label.setText(f"{current_run_time:.0f}s")
+
+
     def update_multi_view(self):
         # call this from a thread ? or maybe not
+        self.timer_update_counter += 1
+        if self.timer_update_counter >= 10:
+            self.update_rec_timer() # dont call this too often ?
+            self.timer_update_counter = 0        
         try:
             t0 = time.monotonic()
             for c_id in range(self.number_cams):
@@ -257,6 +274,7 @@ class BASLER_GUI(QMainWindow):
         # change the pixmap color to red
         self.Rec_status.setStyleSheet("background-color: rgb(255, 0, 0);")
 
+        self.rec_start_time = time.monotonic()
         # create a time that executes the trigger after 500 ms delay to make sure cameras are ready
         if self.trigger and use_hw_trigger:
             self.trigger.fps = self.FrameRateSpin.value()
@@ -321,6 +339,8 @@ class BASLER_GUI(QMainWindow):
         if not self.is_remote_ctr:
             self.RUNButton.setEnabled(True)
             self.RECButton.setEnabled(True)
+            self.REC_calib_Button.setEnabled(True)
+
             self.ShowSingleCamButton.setEnabled(True)
 
             self.AutoExposeButton.setEnabled(True)

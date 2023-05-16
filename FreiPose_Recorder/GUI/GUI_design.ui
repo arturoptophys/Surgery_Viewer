@@ -481,7 +481,7 @@ Calibration</string>
      <number>51</number>
     </property>
     <property name="value">
-     <number>23</number>
+     <number>18</number>
     </property>
    </widget>
    <widget class="QComboBox" name="Codec_comboBox">
@@ -708,6 +708,24 @@ REMOTE mode</string>
      <string/>
     </property>
    </widget>
+   <widget class="QLabel" name="recording_duration_label">
+    <property name="geometry">
+     <rect>
+      <x>670</x>
+      <y>290</y>
+      <width>91</width>
+      <height>17</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>0s</string>
+    </property>
+   </widget>
    <zorder>SettingsSaveButton</zorder>
    <zorder>SettingsLoadButton</zorder>
    <zorder>ScanDevButton</zorder>
@@ -744,6 +762,7 @@ REMOTE mode</string>
    <zorder>Rec_status</zorder>
    <zorder>horizontalSlider</zorder>
    <zorder>SavePath_label</zorder>
+   <zorder>recording_duration_label</zorder>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionsaveSettings">

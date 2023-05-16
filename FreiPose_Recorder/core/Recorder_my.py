@@ -839,6 +839,7 @@ class Recorder(object):
 
             except genicam.TimeoutException as e:
                 self.log.error(e)
+                #TODO signal to GUI, somwthing went wrong and recording is aborted
                 break
             except Full:
                 self.log.error(f"Queue buffer{context_id}overrun !")
