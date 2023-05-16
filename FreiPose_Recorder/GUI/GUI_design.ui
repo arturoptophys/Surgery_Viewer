@@ -35,6 +35,9 @@
       <height>41</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Opens a dialog to choose a settings file to save current settings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="text">
      <string>SaveSettings</string>
     </property>
@@ -48,6 +51,9 @@
       <height>41</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Opens a dialog to choose a settings file to load settings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="text">
      <string>LoadSettings</string>
     </property>
@@ -60,6 +66,9 @@
       <width>80</width>
       <height>41</height>
      </rect>
+    </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Scans for available Basler cameras&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
     <property name="text">
      <string>Scan
@@ -78,6 +87,9 @@ Devices</string>
       <height>41</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Connects to previously detected Basler cameras.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="text">
      <string>Connect</string>
     </property>
@@ -93,6 +105,9 @@ Devices</string>
       <width>71</width>
       <height>41</height>
      </rect>
+    </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Start grabbing from &lt;span style=&quot; text-decoration: underline;&quot;&gt;all &lt;/span&gt;cameras without recording.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
     <property name="styleSheet">
      <string notr="true">QPushButton {background-color:  rgb(0, 255, 0)}</string>
@@ -113,6 +128,9 @@ Devices</string>
       <height>41</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Stop grabbing from cameras.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="styleSheet">
      <string notr="true">QPushButton {color: white; background-color: gray;}</string>
     </property>
@@ -131,6 +149,9 @@ Devices</string>
       <width>71</width>
       <height>41</height>
      </rect>
+    </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Start recording videos from all cameras.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
     <property name="styleSheet">
      <string notr="true">QPushButton {background-color:  rgb(200, 0, 0)}</string>
@@ -167,6 +188,9 @@ Devices</string>
       <height>31</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Desired framerate.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="suffix">
      <string> fps</string>
     </property>
@@ -194,6 +218,9 @@ Devices</string>
       <pointsize>8</pointsize>
      </font>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;List of detected Basler cameras (SN).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="frameShape">
      <enum>QFrame::StyledPanel</enum>
     </property>
@@ -210,6 +237,9 @@ Devices</string>
       <height>24</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Run auto-exposure.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="text">
      <string>AutoExpose</string>
     </property>
@@ -222,6 +252,9 @@ Devices</string>
       <width>111</width>
       <height>24</height>
      </rect>
+    </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Run auto-gain.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
     <property name="text">
      <string>AutoGain</string>
@@ -236,6 +269,9 @@ Devices</string>
       <height>24</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Run auto white balance. (Color cams only).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="text">
      <string>WhiteBalance</string>
     </property>
@@ -248,6 +284,9 @@ Devices</string>
       <width>75</width>
       <height>20</height>
      </rect>
+    </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Whether to run auto-functions on &lt;span style=&quot; text-decoration: underline;&quot;&gt;all&lt;/span&gt; cams.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
     <property name="text">
      <string>all cams</string>
@@ -262,6 +301,9 @@ Devices</string>
       <height>24</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Flips image along X-Axis.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="text">
      <string>Flip X</string>
     </property>
@@ -275,6 +317,9 @@ Devices</string>
       <height>24</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Flips image along Y-Axis.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="text">
      <string>Flip Y</string>
     </property>
@@ -287,6 +332,9 @@ Devices</string>
       <width>111</width>
       <height>51</height>
      </rect>
+    </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Shows the current camera in a single window.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
     <property name="styleSheet">
      <string notr="true">QPushButton {background-color:  rgb(0, 200, 0)}</string>
@@ -304,6 +352,9 @@ Devices</string>
       <height>20</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If cameras should be set into hardware-triggered mode.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="text">
      <string>HW-triggered</string>
     </property>
@@ -316,6 +367,9 @@ Devices</string>
       <width>181</width>
       <height>20</height>
      </rect>
+    </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Turns of the visualization of incoming frames.&lt;/p&gt;&lt;p&gt;May increase the performance if frame-rates are high.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
     <property name="text">
      <string>Disable Visualization</string>
@@ -373,10 +427,13 @@ Devices</string>
     <property name="geometry">
      <rect>
       <x>340</x>
-      <y>10</y>
+      <y>40</y>
       <width>91</width>
       <height>41</height>
      </rect>
+    </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Opens a dialog to choose a folder where the videos will be saved in.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
     <property name="text">
      <string>Choose
@@ -395,6 +452,9 @@ Savepath</string>
       <height>41</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Start a short recording sequence after a short delay. &lt;/p&gt;&lt;p&gt;Used to record the calibration pattern.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="text">
      <string>REC
 Calibration</string>
@@ -404,7 +464,7 @@ Calibration</string>
     <property name="geometry">
      <rect>
       <x>650</x>
-      <y>150</y>
+      <y>100</y>
       <width>71</width>
       <height>26</height>
      </rect>
@@ -414,12 +474,21 @@ Calibration</string>
       <pointsize>9</pointsize>
      </font>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Constant Rate Factor. Quality preset. Lower values better quality.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
+    <property name="maximum">
+     <number>51</number>
+    </property>
+    <property name="value">
+     <number>23</number>
+    </property>
    </widget>
    <widget class="QComboBox" name="Codec_comboBox">
     <property name="geometry">
      <rect>
       <x>600</x>
-      <y>120</y>
+      <y>70</y>
       <width>121</width>
       <height>25</height>
      </rect>
@@ -429,12 +498,15 @@ Calibration</string>
       <pointsize>9</pointsize>
      </font>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Codec used for encoding the video. Some might not be available on current system.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
    </widget>
    <widget class="QLabel" name="label">
     <property name="geometry">
      <rect>
       <x>550</x>
-      <y>120</y>
+      <y>70</y>
       <width>67</width>
       <height>17</height>
      </rect>
@@ -452,7 +524,7 @@ Calibration</string>
     <property name="geometry">
      <rect>
       <x>550</x>
-      <y>150</y>
+      <y>100</y>
       <width>31</width>
       <height>17</height>
      </rect>
@@ -470,7 +542,7 @@ Calibration</string>
     <property name="geometry">
      <rect>
       <x>550</x>
-      <y>90</y>
+      <y>40</y>
       <width>211</width>
       <height>17</height>
      </rect>
@@ -501,6 +573,9 @@ Calibration</string>
       <pointsize>10</pointsize>
      </font>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enables remote control mode, whereby this tool is controlled via TCP/IP messages.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="styleSheet">
      <string notr="true">QPushButton {background-color:  rgb(0, 125, 125)}</string>
     </property>
@@ -524,6 +599,9 @@ REMOTE mode</string>
       <bold>false</bold>
      </font>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Current Host.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="text">
      <string>disconnected</string>
     </property>
@@ -541,6 +619,9 @@ REMOTE mode</string>
      <font>
       <pointsize>9</pointsize>
      </font>
+    </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Prefix of the filename e.g., session_id.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_4">
@@ -570,6 +651,9 @@ REMOTE mode</string>
       <height>51</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Current status.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
     <property name="text">
      <string/>
     </property>
@@ -582,6 +666,9 @@ REMOTE mode</string>
       <width>141</width>
       <height>21</height>
      </rect>
+    </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Desired framerate as a slider.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
     <property name="minimum">
      <number>1</number>
@@ -606,7 +693,7 @@ REMOTE mode</string>
     <property name="geometry">
      <rect>
       <x>340</x>
-      <y>50</y>
+      <y>10</y>
       <width>321</width>
       <height>31</height>
      </rect>

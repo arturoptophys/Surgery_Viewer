@@ -33,20 +33,15 @@ from FreiPose_Recorder.ImageViewer import SingleCamViewer, RemoteConnDialog
 from FreiPose_Recorder.utils.StitchedImage import StitchedImage
 from FreiPose_Recorder.utils.socket_utils import SocketComm, SocketMessage, MessageStatus, MessageType
 from FreiPose_Recorder.core.Trigger import TriggerArduino
+from FreiPose_Recorder.params import *
 
 log = logging.getLogger('main')
 log.setLevel(logging.DEBUG)
 
 logging.basicConfig(filename=f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.4.11"
-HOST = "localhost"  # if connecting to remote, use the IP of the current machine
-PORT = 8881
-USE_ARDUINO_TRIGGER = False
-CALIB_DURATION = 30000
-CALIB_WAIT = 10000
-SAVE_TIMESTAMPS = False
-ENABLE_REMOTE = True
+VERSION = "0.4.12"
+
 
 
 class BASLER_GUI(QMainWindow):

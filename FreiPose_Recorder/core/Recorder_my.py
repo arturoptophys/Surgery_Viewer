@@ -20,6 +20,8 @@ from FreiPose_Recorder.utils.VideoWriterFast_gear import QueueOverflow
 
 from FreiPose_Recorder.configs.camera_enums import CameraIdentificationSN
 
+from FreiPose_Recorder.params import TIME_STAMP_STRING
+
 
 # Another way to get warnings when images are missing ... not used
 # could also implement recording videos inside such routine, needs testing if faster ?
@@ -751,7 +753,11 @@ class Recorder(object):
 
         self.cams_context = {}
         self.video_writer_list = list()
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        try:
+            timestamp = datetime.datetime.now().strftime(TIME_STAMP_STRING)
+        except (TypeError,ValueError):
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+
         # to make sure all have the same timestamp
         for c_id, cam in enumerate(self.cam_array):
             if use_hw_trigger:
