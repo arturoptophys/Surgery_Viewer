@@ -1,4 +1,4 @@
-HOST = "localhost"  # if connecting to remote, use the IP of the current machine
+HOST = "10.4.26.118"  # if connecting to remote, use the IP of the current machine
 PORT = 8881
 USE_ARDUINO_TRIGGER = False
 CALIB_DURATION = 30000
