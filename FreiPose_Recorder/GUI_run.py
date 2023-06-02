@@ -48,6 +48,8 @@ VERSION = "0.4.12"
 class BASLER_GUI(QMainWindow):
     def __init__(self):
         super(BASLER_GUI, self).__init__()
+        self.session_path = None
+        self.files_copied = False
         self.timer_update_counter = 0
         self.rec_start_time = None
         self.calib_start_timer = None
@@ -238,6 +240,7 @@ class BASLER_GUI(QMainWindow):
         self.ViewWidget.updateView(stitched_image)
 
     def start_recording(self):
+        self.files_copied = False
         self.stop_event = Event()
         session_id = self.SessionIDlineEdit.text()
         if session_id:
@@ -708,6 +711,34 @@ class BASLER_GUI(QMainWindow):
             elif message['type'] == MessageType.disconnected.value:
                 self.log.info("got message that client disconnected")
                 self.exit_remote_mode()
+
+            elif message['type'] == MessageType.copy_files.value:
+                self.log.debug('got message to copy files')
+                self.session_path = message['session_path']
+                if self.session_path:
+                    self.copy_recorded_file()
+
+            elif message['type'] == MessageType.purge_files.value:
+                self.log.debug('got message to purge files')
+                self.purge_recorded_file()
+
+    def purge_recorded_file(self):
+        for videowriter in self.basler_recorder.video_writer_list:
+            if videowriter.stopped:
+                self.log.info(f"Deleting file {videowriter.video_path}")
+                Path(videowriter.video_path).unlink()
+            else:
+                self.log.info(f"Cant delete file {videowriter.video_path} as recorder hasnt finished yet")
+
+    def copy_recorded_file(self):
+        if not self.basler_recorder.is_recording and not self.files_copied:
+            for videowriter in self.basler_recorder.video_writer_list:
+                if videowriter.stopped:
+                    self.log.info(f"Copying file {videowriter.video_path} to {Path(self.session_path) / VIDEO_FOLDER}")
+                    shutil.copyfile(videowriter.video_path,
+                                    Path(self.session_path) / VIDEO_FOLDER / videowriter.video_path.name)
+            self.files_copied = True
+            self.socket_comm.send_json_message(SocketMessage.respond_copy)
 
     def app_is_exiting(self):
         # check if recording is running stop if does.

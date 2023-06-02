@@ -23,6 +23,8 @@ class MessageType(Enum):
     status = 'status'
     response = 'response'
     disconnected = 'disconnected'
+    copy_files = 'copy_files'
+    purge_files = 'purge_files'
 
 class MessageStatus(Enum):
     ready = 'ready'
@@ -34,6 +36,7 @@ class MessageStatus(Enum):
     stop_ok = 'stop_ok'
     pulsing_ok = 'pulsing_ok'
     calib_ok = 'calib_ok'
+    copy_ok = 'copy_ok'
 
 class SocketMessage:
     status_error = {'type': MessageType.status.value, 'status': MessageStatus.error.value}
@@ -46,17 +49,21 @@ class SocketMessage:
     respond_stop = {'type': MessageType.response.value, 'status': MessageStatus.stop_ok.value}
     respond_pulsing = {'type': MessageType.response.value, 'status': MessageStatus.pulsing_ok.value}
     respond_calib = {'type': MessageType.response.value, 'status': MessageStatus.calib_ok.value}
+    respond_copy = {'type': MessageType.response.value, 'status': MessageStatus.copy_ok.value}
     client_disconnected = {'type': MessageType.disconnected.value}
 
     def __init__(self):
+        self._session_path = None
         self._fps = 30
         self._session_id = "test"
         self._daq_setting_file = ''
         self._basler_setting_file = ''
+        self._pulse_lag = 0
         self.start_daq = {'type': MessageType.start_daq.value, 'session_id': self._session_id,
                           'setting_file': self._daq_setting_file}
         self.stop_daq = {'type': MessageType.stop_daq.value}
-        self.start_daq_pulses = {'type': MessageType.start_daq_pulses.value, 'fps': self._fps}
+        self.start_daq_pulses = {'type': MessageType.start_daq_pulses.value, 'fps': self._fps,
+                                 'pulse_lag': self._pulse_lag}
         self.stop_daq_pulses = {'type': MessageType.stop_daq_pulses.value}
         self.start_daq_viewing = {'type': MessageType.start_daq_viewing.value, 'session_id': self._session_id,
                                   'setting_file': self._daq_setting_file}
@@ -71,6 +78,18 @@ class SocketMessage:
         self.start_video_calibrec = {'type': MessageType.start_video_calibrec.value, 'session_id': 'calibration',
                                      'setting_file': self._basler_setting_file, 'frame_rate': 5}
 
+        self.copy_files = {'type': MessageType.copy_files.value, 'session_id': self._session_id,
+                                     'session_path': self._session_path}
+        self.purge_files = {'type': MessageType.purge_files.value, 'session_id': self._session_id}
+
+    @property
+    def pulse_lag(self):
+        return self._pulse_lag
+
+    @pulse_lag.setter
+    def pulse_lag(self, value: int):
+        self._pulse_lag = value
+        self.update_messages()
 
     @property
     def session_id(self):
@@ -79,6 +98,15 @@ class SocketMessage:
     @session_id.setter
     def session_id(self, value: str):
         self._session_id = value
+        self.update_messages()
+
+    @property
+    def session_path(self):
+        return self._session_path
+
+    @session_path.setter
+    def session_path(self, value: str):
+        self._session_path = value
         self.update_messages()
 
     @property
@@ -112,12 +140,14 @@ class SocketMessage:
         self.start_daq.update(**{'session_id': self.session_id, 'setting_file': self.daq_setting_file})
         self.start_daq_viewing.update(**{'session_id': self._session_id,
                                          'setting_file': self.daq_setting_file})
-        self.start_daq_pulses.update(**{'fps': self.fps})
+        self.start_daq_pulses.update(**{'fps': self.fps, 'pulse_lag': self.pulse_lag})
         self.start_video_rec.update(**{'session_id': self.session_id, 'setting_file': self.basler_setting_file,
                                        'frame_rate': self.fps})
         self.start_video_view.update(**{'session_id': self._session_id, 'setting_file': self.basler_setting_file,
                                         'frame_rate': self.fps})
         self.start_video_calibrec.update(**{'session_id': 'calibration', 'setting_file': self.basler_setting_file})
+        self.copy_files.update(**{'session_id': self.session_id, 'session_path': self._session_path})
+        self.purge_files.update(**{'session_id': self._session_id})
 
 
 class SocketComm:
@@ -152,7 +182,10 @@ class SocketComm:
         if self.type == 'client':
             pass
         elif self.type == 'server':
-            self._sock.bind((self.host, self.port))
+            try:
+                self._sock.bind((self.host, self.port))
+            except OSError:
+                self.log.warning('Adress alrady in use.. need to delete somehow ?')
             self._sock.listen()
             if self.use_ssl:
                 self._ssl_sock = self.context.wrap_socket(self._sock, server_side=True, do_handshake_on_connect=False)
@@ -208,6 +241,7 @@ class SocketComm:
             else:
                 self.sock = self._sock
             self._connect(self.host, self.port)
+            self.connected = True
             return True
         else:
             return False
@@ -217,8 +251,7 @@ class SocketComm:
         if self.use_ssl:
             if self.ssl_sock:
                 self.ssl_sock.close()
-            if self._ssl_sock:
-                self._ssl_sock.close()
+            self._ssl_sock.close()
         if self.sock:
             self.sock.close()
         if self._sock:
