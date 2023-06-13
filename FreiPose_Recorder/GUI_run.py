@@ -735,8 +735,12 @@ class BASLER_GUI(QMainWindow):
             for videowriter in self.basler_recorder.video_writer_list:
                 if videowriter.stopped:
                     self.log.info(f"Copying file {videowriter.video_path} to {Path(self.session_path) / VIDEO_FOLDER}")
-                    shutil.copyfile(videowriter.video_path,
-                                    Path(self.session_path) / VIDEO_FOLDER / videowriter.video_path.name)
+                    if 'MusterMaus' in self.session_id:
+                        shutil.copyfile(videowriter.video_path,
+                                        Path(self.session_path) / videowriter.video_path.name)
+                    else:
+                        shutil.copyfile(videowriter.video_path,
+                                        Path(self.session_path) / VIDEO_FOLDER / videowriter.video_path.name)
             self.files_copied = True
             self.socket_comm.send_json_message(SocketMessage.respond_copy)
 
