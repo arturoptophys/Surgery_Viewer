@@ -42,8 +42,8 @@ NUM_CAMERAS = 5  # simulated cameras
 # setup demo environment with emulated cameras
 # os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
 # remove when not needed anymore
-TRIGGER_LINE_IN = "Line1"
-TRIGGER_LINE_OUT = "Line3"
+TRIGGER_LINE_IN = "Line3"
+TRIGGER_LINE_OUT = "Line1"
 
 def rel_close(v, max_v, thresh=5.0):
     v_scaled = v / max_v * 100.0
@@ -78,7 +78,7 @@ class Recorder(object):
         self._rid = 0
         self.fps = 10
         self._trigger = None
-        self.grab_timeout = 1000  # in
+        self.grab_timeout = 10000  # in
         self.internal_queue_size = 100  # Size of the QUEUE for transfering images between threads
 
         self.log = logging.getLogger('BaslerRecorder')
@@ -200,9 +200,9 @@ class Recorder(object):
         # todo Parametrize those settings !! 
         cam.LineSelector = TRIGGER_LINE_IN
         cam.LineMode = "Input"
-        cam.LineSelector = TRIGGER_LINE_OUT
-        cam.LineMode = "Output"
-
+        #cam.LineSelector = TRIGGER_LINE_OUT
+        #cam.LineMode = "Output"
+        # cam.LineSource = pylon. # set to exposureactive
         cam.TriggerSelector = "FrameStart"
         cam.TriggerSource = TRIGGER_LINE_IN
         cam.TriggerMode = "On"

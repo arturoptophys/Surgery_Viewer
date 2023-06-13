@@ -39,10 +39,10 @@ from FreiPose_Recorder.params import *
 log = logging.getLogger('main')
 log.setLevel(logging.DEBUG)
 
-logging.basicConfig(filename=f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
+#logging.basicConfig(filename=f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.4.12"
-
+VERSION = "0.4.15"
+VIDEO_FOLDER = "video"
 
 
 class BASLER_GUI(QMainWindow):
@@ -675,7 +675,7 @@ class BASLER_GUI(QMainWindow):
                         self.FrameRateSpin.setValue(message["frame_rate"])
                 except KeyError:
                     pass
-                self.remote_message_timer.setInterval(10000)  # increase the interval to 10s
+                self.remote_message_timer.setInterval(5000)  # increase the interval to 10s
 
                 if message['type'] == MessageType.start_video_rec.value:
                     self.log.info("got message to start recording")
