@@ -240,6 +240,7 @@ class SocketComm:
                                                          do_handshake_on_connect=False)
             else:
                 self.sock = self._sock
+                self.sock.settimeout(0.1)  # otherwise we get issues if nothing is comming
             self._connect(self.host, self.port)
             self.connected = True
             return True
@@ -269,6 +270,8 @@ class SocketComm:
             message = None
         return message
 
+
+
     def read_json_message_fast(self) -> dict:
         try:
             message = self._recv(1024)
@@ -280,11 +283,24 @@ class SocketComm:
                 return message
         except json.decoder.JSONDecodeError:
             message = None
+            print('message decoding failed')
+        return message
+
+    def read_json_message_fast_linebreak(self) -> dict:
+        try:
+            message = self._recv_until(b'\n')
+            if message == -1:
+                return SocketMessage.client_disconnected
+            if message is not None:
+                message = json.loads(message.decode())
+        except json.decoder.JSONDecodeError:
+            message = None
+            print('message decoding failed')
         return message
 
     def send_json_message(self, message: dict):
         message = json.dumps(message).encode()
-        # message += b'\n'
+        message += b'\n'
         self._send(message)
 
     def _connect(self, host, port):
@@ -325,6 +341,9 @@ class SocketComm:
                     data += self.sock.recv(1)
         except socket.timeout:
             data = None
+        except ConnectionResetError:
+            self.log.warning("Client disconnected")
+            data = -1
         return data
 
     def _recv_all(self):
