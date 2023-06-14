@@ -33,10 +33,12 @@ class MessageStatus(Enum):
     recording = 'recording'
     viewing_ok = 'viewing_ok'
     recording_ok = 'recording_ok'
+    recording_fail = 'recording_fail'
     stop_ok = 'stop_ok'
     pulsing_ok = 'pulsing_ok'
     calib_ok = 'calib_ok'
     copy_ok = 'copy_ok'
+    copy_fail = 'copy_fail'
 
 class SocketMessage:
     status_error = {'type': MessageType.status.value, 'status': MessageStatus.error.value}
@@ -45,11 +47,13 @@ class SocketMessage:
     status_viewing = {'type': MessageType.status.value, 'status': MessageStatus.viewing.value}
 
     respond_recording = {'type': MessageType.response.value, 'status': MessageStatus.recording_ok.value}
+    respond_recording_fail = {'type': MessageType.response.value, 'status': MessageStatus.recording_fail.value}
     respond_viewing = {'type': MessageType.response.value, 'status': MessageStatus.viewing_ok.value}
     respond_stop = {'type': MessageType.response.value, 'status': MessageStatus.stop_ok.value}
     respond_pulsing = {'type': MessageType.response.value, 'status': MessageStatus.pulsing_ok.value}
     respond_calib = {'type': MessageType.response.value, 'status': MessageStatus.calib_ok.value}
     respond_copy = {'type': MessageType.response.value, 'status': MessageStatus.copy_ok.value}
+    respond_copy_fail = {'type': MessageType.response.value, 'status': MessageStatus.copy_fail.value}
     client_disconnected = {'type': MessageType.disconnected.value}
 
     def __init__(self):

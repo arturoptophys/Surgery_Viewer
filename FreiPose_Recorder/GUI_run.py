@@ -5,14 +5,12 @@ Author: Artur artur.schneider@biologie.uni-freiburg.de
 
 Planned features:
 - save timestamps from taken frames
-- visualize calibration detection ?
-- record calibration pattern with processing ?
-- implement hardware trigger control !
 
 TODO:
 - test recording speeds / loosing frames
-- test hardware triggering
+50 fps seems to work with no issue
 - signal to GUI, somwthing went wrong with grabbing and recording is aborted
+implemented but not tested
 """
 
 import datetime
@@ -20,6 +18,7 @@ import json
 import logging
 import sys
 import time
+import shutil
 
 from queue import Empty
 from threading import Event
@@ -41,7 +40,7 @@ log.setLevel(logging.DEBUG)
 
 #logging.basicConfig(filename=f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.4.15"
+VERSION = "0.4.2"
 VIDEO_FOLDER = "video"
 
 
@@ -197,7 +196,7 @@ class BASLER_GUI(QMainWindow):
             self.update_rec_timer() # dont call this too often ?
             self.timer_update_counter = 0        
         try:
-            t0 = time.monotonic()
+            #t0 = time.monotonic()
             for c_id in range(self.number_cams):
                 curr_image = self.basler_recorder.multi_view_queue[c_id].get_nowait()
                 if self.DisableViz_checkBox.isChecked():
@@ -222,6 +221,11 @@ class BASLER_GUI(QMainWindow):
         self.statusbar.showMessage(display_string)
         # self.ViewWidget.updateView(currentImg)
         # self.ViewWidget.updateView(stitched_image)
+
+        if not self.basler_recorder.is_recording and not self.basler_recorder.is_viewing:
+            self.log.error('Basler recording stopped internally')
+            self.socket_comm.send_json_message(SocketMessage.respond_recording_fail)
+
 
     def update_multi_view_singlewindow(self):
         # call this from a thread ? maybe not seems to work so far
@@ -256,7 +260,7 @@ class BASLER_GUI(QMainWindow):
 
         self.multi_view_timer = QTimer()
         self.multi_view_timer.timeout.connect(self.update_multi_view)
-        self.multi_view_timer.start(10)  # dependign on frame rate ..
+        self.multi_view_timer.start(5)  # dependign on frame rate ..
 
         self.STOPButton.setEnabled(True)
         self.RUNButton.setEnabled(False)
@@ -322,12 +326,13 @@ class BASLER_GUI(QMainWindow):
             self.basler_recorder.stop_single_cam_show()
 
         if self.multi_view_timer:
+            self.multi_view_timer.stop()
+            self.multi_view_timer = None
             if self.basler_recorder.is_recording:
                 self.basler_recorder.stop_multi_cam_record()
             else:
                 self.basler_recorder.stop_multi_cam_show()
-            self.multi_view_timer.stop()
-            self.multi_view_timer = None
+
 
         if self.single_camviewer:
             if self.single_camviewer.isVisible():
@@ -735,12 +740,16 @@ class BASLER_GUI(QMainWindow):
             for videowriter in self.basler_recorder.video_writer_list:
                 if videowriter.stopped:
                     self.log.info(f"Copying file {videowriter.video_path} to {Path(self.session_path) / VIDEO_FOLDER}")
-                    if 'MusterMaus' in self.session_id:
-                        shutil.copyfile(videowriter.video_path,
-                                        Path(self.session_path) / videowriter.video_path.name)
-                    else:
-                        shutil.copyfile(videowriter.video_path,
-                                        Path(self.session_path) / VIDEO_FOLDER / videowriter.video_path.name)
+                    try:
+                        if 'MusterMaus' in self.session_id:
+                            shutil.copyfile(videowriter.video_path,
+                                            Path(self.session_path) / videowriter.video_path.name)
+                        else:
+                            shutil.copyfile(videowriter.video_path,
+                                            Path(self.session_path) / VIDEO_FOLDER / videowriter.video_path.name)
+                    except (FileNotFoundError, IOError):
+                        self.socket_comm.send_json_message(SocketMessage.respond_copy_fail)
+                        return
             self.files_copied = True
             self.socket_comm.send_json_message(SocketMessage.respond_copy)
 
@@ -768,7 +777,6 @@ class BASLER_GUI(QMainWindow):
                                               message_text,
                                               buttons=QMessageBox.StandardButton.No | QMessageBox.StandardButton.Yes)
             if message == QMessageBox.StandardButton.No:
-                self.log.info('pressed no')
                 event.ignore()
                 return
             elif message == QMessageBox.StandardButton.Abort:

@@ -44,6 +44,7 @@ NUM_CAMERAS = 5  # simulated cameras
 # remove when not needed anymore
 TRIGGER_LINE_IN = "Line3"
 TRIGGER_LINE_OUT = "Line1"
+MAX_FPS = 150
 
 def rel_close(v, max_v, thresh=5.0):
     v_scaled = v / max_v * 100.0
@@ -92,8 +93,8 @@ class Recorder(object):
     def fps(self, fps_new):
         if fps_new < 1:
             self.__fps = 1
-        elif fps_new > 100:
-            self.__fps = 100  # todo make parameters
+        elif fps_new > MAX_FPS:
+            self.__fps = MAX_FPS
         else:
             self.__fps = fps_new
 
@@ -165,9 +166,9 @@ class Recorder(object):
 
         cam.AcquisitionFrameRateEnable = True
 
-        cam.MaxNumBuffer.SetValue(16)  # how many buffers there are in total (empty and full)
+        cam.MaxNumBuffer.SetValue(1024)  # how many buffers there are in total (empty and full)
         cam.OutputQueueSize.SetValue(
-            8)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
+            512)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
 
         cam.AcquisitionMode = 'Continuous'
         cam.TriggerMode = 'Off'
@@ -188,16 +189,15 @@ class Recorder(object):
             cam.AcquisitionFrameRateAbs = 200  # maybe basler 2 cameras ?
         cam.AcquisitionFrameRateEnable = True  # should this be False ? 
         # behavior wrt to these values is a bit strange to me. Important seems to be to use LastImages Strategy and make MaxNumBuffers larger than OutputQueueSize. Otherwise its not guaranteed to work
-        cam.MaxNumBuffer.SetValue(16)  # how many buffers there are in total (empty and full)
+        cam.MaxNumBuffer.SetValue(1024)  # how many buffers there are in total (empty and full)
         cam.OutputQueueSize.SetValue(
-            8)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
+            512)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
 
         cam.AcquisitionMode = 'Continuous'
         # cam.PixelFormat.SetValue("BGR8")
         # cam.DemosaicingMode.SetValue('BaslerPGI')
         #  cam.PixelFormat = 'Mono8'
 
-        # todo Parametrize those settings !! 
         cam.LineSelector = TRIGGER_LINE_IN
         cam.LineMode = "Input"
         #cam.LineSelector = TRIGGER_LINE_OUT
@@ -737,6 +737,7 @@ class Recorder(object):
                 self.log.error(f"Queue buffer{context_id}overrun !")
                 break
         self.cam_array.StopGrabbing()
+        self.is_viewing = False
 
     def run_multi_cam_record(self, stop_event: Event, filename: str = 'testrec', use_hw_trigger: bool = False):
         was_closed = False
@@ -842,6 +843,7 @@ class Recorder(object):
             except genicam.TimeoutException as e:
                 self.log.error(e)
                 #TODO signal to GUI, somwthing went wrong and recording is aborted
+                # maybe set an event..
                 break
             except Full:
                 self.log.error(f"Queue buffer{context_id}overrun !")
@@ -850,7 +852,7 @@ class Recorder(object):
                 self.log.error(f"Queue buffer{context_id}overrun !")
                 break
         self.cam_array.StopGrabbing()
-
+        self.is_recording = False
 
 if __name__ == "__main__":
     baslerRec = Recorder()
