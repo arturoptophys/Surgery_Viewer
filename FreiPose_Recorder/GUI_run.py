@@ -101,6 +101,9 @@ class BASLER_GUI(QMainWindow):
         else:
             self.trigger = None
 
+        #need to connect beforehand
+        self.load_settings('default_settings.settings.json')
+
     ### Device Connectivity ####
     def scan_cams(self):
         found_cams = self.basler_recorder.get_cam_info()
@@ -442,11 +445,11 @@ class BASLER_GUI(QMainWindow):
         Load camera settings from a json file
         """
         if not self.basler_recorder.cams_connected:
-            self.log.info('Not connected to cameras cant save settings')
+            self.log.info('Not connected to cameras cant load settings')
 
             QMessageBox.information(self,
                                     "Info",
-                                    "Not connected to cameras, cant save settings",
+                                    "Not connected to cameras, cant load settings",
                                     buttons=QMessageBox.StandardButton.Ok)
             return
 
@@ -743,10 +746,10 @@ class BASLER_GUI(QMainWindow):
                     try:
                         if 'MusterMaus' in self.session_id:
                             shutil.copyfile(videowriter.video_path,
-                                            Path(self.session_path) / videowriter.video_path.name)
+                                            Path(self.session_path) / videowriter.video_path)
                         else:
                             shutil.copyfile(videowriter.video_path,
-                                            Path(self.session_path) / VIDEO_FOLDER / videowriter.video_path.name)
+                                            Path(self.session_path) / VIDEO_FOLDER / videowriter.video_path)
                     except (FileNotFoundError, IOError):
                         self.socket_comm.send_json_message(SocketMessage.respond_copy_fail)
                         return

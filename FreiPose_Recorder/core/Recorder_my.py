@@ -67,6 +67,7 @@ class Recorder(object):
         self.current_cam = None
         self.single_view_thread = None
         self.single_view_queue = None
+        self.multi_view_thread = None
         self.cams_connected = False
         self.cam_array = []
         self._verbosity = verbosity
@@ -706,9 +707,10 @@ class Recorder(object):
         self.is_viewing = True
 
     def stop_multi_cam_show(self):
-        self.log.debug('Stopping multi-view, waiting for join')
-        self.multi_view_thread.join()  # wait for thread to finish
-        self.log.debug('thread joined')
+        if self.multi_view_thread:
+            self.log.debug('Stopping multi-view, waiting for join')
+            self.multi_view_thread.join()  # wait for thread to finish
+            self.log.debug('thread joined')
         self.stop_event = None
         self.multi_view_thread = None
         self.cams_context = None
