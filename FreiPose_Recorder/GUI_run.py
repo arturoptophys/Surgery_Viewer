@@ -742,17 +742,24 @@ class BASLER_GUI(QMainWindow):
             for videowriter in self.basler_recorder.video_writer_list:
                 if videowriter.stopped:
                     self.log.info(f"Copying file {videowriter.video_path} to {Path(self.session_path) / VIDEO_FOLDER}")
+
+
                     try:
                         if 'MusterMaus' in self.session_id:
                             shutil.copyfile(videowriter.video_path,
-                                            Path(self.session_path) / videowriter.video_path)
+                                            Path(self.session_path) / Path(videowriter.video_path).name)
                         else:
+                            if Path(self.session_path).exists():
+                                #if not (Path(self.session_path) / VIDEO_FOLDER).exists():
+                                (Path(self.session_path) / VIDEO_FOLDER).mkdir(exist_ok=True)
                             shutil.copyfile(videowriter.video_path,
-                                            Path(self.session_path) / VIDEO_FOLDER / videowriter.video_path)
-                    except (FileNotFoundError, IOError):
+                                            Path(self.session_path) / VIDEO_FOLDER / Path(videowriter.video_path).name)
+                    except (FileNotFoundError, IOError) as e:
                         self.socket_comm.send_json_message(SocketMessage.respond_copy_fail)
+                        self.log.error(f"Error copying file {e}")
                         return
             self.files_copied = True
+            self.log.info(f"Finished copying files to {Path(self.session_path) / VIDEO_FOLDER}")
             self.socket_comm.send_json_message(SocketMessage.respond_copy)
 
     def app_is_exiting(self):
