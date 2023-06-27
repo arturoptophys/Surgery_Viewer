@@ -9,7 +9,6 @@ Planned features:
 TODO:
 - test recording speeds / loosing frames
 50 fps seems to work with no issue
-- signal to GUI, somwthing went wrong with grabbing and recording is aborted
 implemented but not tested
 """
 
@@ -40,8 +39,8 @@ log.setLevel(logging.DEBUG)
 
 #logging.basicConfig(filename=f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.4.2"
-VIDEO_FOLDER = "video"
+VERSION = "0.4.5"
+
 
 
 class BASLER_GUI(QMainWindow):

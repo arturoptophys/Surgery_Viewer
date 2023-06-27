@@ -20,7 +20,7 @@ from FreiPose_Recorder.utils.VideoWriterFast_gear import QueueOverflow
 
 from FreiPose_Recorder.configs.camera_enums import CameraIdentificationSN
 
-from FreiPose_Recorder.params import TIME_STAMP_STRING
+from FreiPose_Recorder.params import TIME_STAMP_STRING, TRIGGER_LINE_IN, TRIGGER_LINE_OUT, MAX_FPS
 
 
 # Another way to get warnings when images are missing ... not used
@@ -42,9 +42,7 @@ NUM_CAMERAS = 5  # simulated cameras
 # setup demo environment with emulated cameras
 # os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
 # remove when not needed anymore
-TRIGGER_LINE_IN = "Line3"
-TRIGGER_LINE_OUT = "Line1"
-MAX_FPS = 150
+
 
 def rel_close(v, max_v, thresh=5.0):
     v_scaled = v / max_v * 100.0
