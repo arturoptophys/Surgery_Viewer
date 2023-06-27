@@ -122,7 +122,8 @@ class VideoWriterFast:
         # indicate that the thread should be stopped
         self.stopped = True
         # wait until stream resources are released (producer thread might be still grabbing frame)
-        self.thread.join()
+        if self.started:
+            self.thread.join()
         if self.frame_ts:
             with open(self.video_path.replace('.mp4', '.txt'), 'w') as f:
                 json.dump(self.frame_ts, f)

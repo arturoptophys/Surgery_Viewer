@@ -8,11 +8,11 @@ from collections import defaultdict
 from pypylon import genicam
 from pypylon import pylon
 
-from core.Trigger import trigger_factory
+from FreiPose_Recorder.core.Trigger import trigger_factory
 
-from utils.general_util import my_mkdir
-from utils.VideoWriterFast import VideoWriterFast
-from utils.StitchedImage import StitchedImage
+from FreiPose_Recorder.utils.general_util import my_mkdir
+from FreiPose_Recorder.utils.VideoWriterFast import VideoWriterFast
+from FreiPose_Recorder.utils.StitchedImage import StitchedImage
 
 from config.params import params_t
 from config.camera_infos import get_camera_infos

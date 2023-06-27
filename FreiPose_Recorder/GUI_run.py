@@ -5,19 +5,19 @@ Author: Artur artur.schneider@biologie.uni-freiburg.de
 
 Planned features:
 - save timestamps from taken frames
-- visualize calibration detection ?
-- record calibration pattern with processing ?
-- implement hardware trigger control !
 
 TODO:
 - test recording speeds / loosing frames
-- test hardware triggering
+50 fps seems to work with no issue
+implemented but not tested
 """
+
 import datetime
 import json
 import logging
 import sys
 import time
+import shutil
 
 from queue import Empty
 from threading import Event
@@ -27,30 +27,29 @@ from PyQt6.QtCore import QTimer
 from PyQt6 import uic, QtGui, QtSerialPort
 
 from pathlib import Path
-from core.Recorder_my import Recorder
-from ImageViewer import SingleCamViewer, RemoteConnDialog
-from utils.StitchedImage import StitchedImage
-from utils.socket_utils import SocketComm, SocketMessage, MessageStatus, MessageType
-from core.Trigger import TriggerArduino
+from FreiPose_Recorder.core.Recorder_my import Recorder
+from FreiPose_Recorder.ImageViewer import SingleCamViewer, RemoteConnDialog
+from FreiPose_Recorder.utils.StitchedImage import StitchedImage
+from FreiPose_Recorder.utils.socket_utils import SocketComm, SocketMessage, MessageStatus, MessageType
+from FreiPose_Recorder.core.Trigger import TriggerArduino
+from FreiPose_Recorder.params import *
 
 log = logging.getLogger('main')
 log.setLevel(logging.DEBUG)
 
-logging.basicConfig(filename=f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
+#logging.basicConfig(filename=f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.4.10"
-HOST = "localhost"  # if connecting to remote, use the IP of the current machine
-PORT = 8881
-USE_ARDUINO_TRIGGER = False
-CALIB_DURATION = 30000
-CALIB_WAIT = 10000
-SAVE_TIMESTAMPS = False
-ENABLE_REMOTE = True
+VERSION = "0.4.5"
+
 
 
 class BASLER_GUI(QMainWindow):
     def __init__(self):
         super(BASLER_GUI, self).__init__()
+        self.session_path = None
+        self.files_copied = False
+        self.timer_update_counter = 0
+        self.rec_start_time = None
         self.calib_start_timer = None
         self.calib_stop_timer = None
         self.trigger_timer = None
@@ -101,6 +100,9 @@ class BASLER_GUI(QMainWindow):
         else:
             self.trigger = None
 
+        #need to connect beforehand
+        self.load_settings('default_settings.settings.json')
+
     ### Device Connectivity ####
     def scan_cams(self):
         found_cams = self.basler_recorder.get_cam_info()
@@ -144,6 +146,7 @@ class BASLER_GUI(QMainWindow):
         self.CameraSettings2.toolbox.setCurrentIndex(0)
         self.RUNButton.setEnabled(True)
         self.RECButton.setEnabled(True)
+        self.REC_calib_Button.setEnabled(True)
         if ENABLE_REMOTE:
             self.RemoteModeButton.setEnabled(True)
         self.ConnectButton.setEnabled(False)
@@ -170,7 +173,8 @@ class BASLER_GUI(QMainWindow):
         self.Rec_status.setStyleSheet("background-color: rgb(0, 255, 0);")
         for color_mode in self.CameraSettings2.color_mode_list:
             color_mode.setEnabled(False)
-
+            
+        self.rec_start_time = time.monotonic()
         # create a time that executes the trigger after 500 ms delay to make sure cameras are ready
         if self.trigger and use_hw_trigger:
             self.trigger.fps = self.FrameRateSpin.value()
@@ -179,10 +183,22 @@ class BASLER_GUI(QMainWindow):
             self.trigger_timer.timeout.connect(self.trigger.start)
             self.trigger_timer.start(500)
 
+    def update_rec_timer(self):
+        current_run_time = time.monotonic() - self.rec_start_time
+        if current_run_time >= 60:
+            self.recording_duration_label.setText(f"{(current_run_time // 60):.0f}m:{(current_run_time % 60):2.0f}s")
+        else:
+            self.recording_duration_label.setText(f"{current_run_time:.0f}s")
+
+
     def update_multi_view(self):
         # call this from a thread ? or maybe not
+        self.timer_update_counter += 1
+        if self.timer_update_counter >= 10:
+            self.update_rec_timer() # dont call this too often ?
+            self.timer_update_counter = 0        
         try:
-            t0 = time.monotonic()
+            #t0 = time.monotonic()
             for c_id in range(self.number_cams):
                 curr_image = self.basler_recorder.multi_view_queue[c_id].get_nowait()
                 if self.DisableViz_checkBox.isChecked():
@@ -208,6 +224,11 @@ class BASLER_GUI(QMainWindow):
         # self.ViewWidget.updateView(currentImg)
         # self.ViewWidget.updateView(stitched_image)
 
+        if not self.basler_recorder.is_recording and not self.basler_recorder.is_viewing:
+            self.log.error('Basler recording stopped internally')
+            self.socket_comm.send_json_message(SocketMessage.respond_recording_fail)
+
+
     def update_multi_view_singlewindow(self):
         # call this from a thread ? maybe not seems to work so far
         try:
@@ -225,6 +246,7 @@ class BASLER_GUI(QMainWindow):
         self.ViewWidget.updateView(stitched_image)
 
     def start_recording(self):
+        self.files_copied = False
         self.stop_event = Event()
         session_id = self.SessionIDlineEdit.text()
         if session_id:
@@ -240,7 +262,7 @@ class BASLER_GUI(QMainWindow):
 
         self.multi_view_timer = QTimer()
         self.multi_view_timer.timeout.connect(self.update_multi_view)
-        self.multi_view_timer.start(10)  # dependign on frame rate ..
+        self.multi_view_timer.start(5)  # dependign on frame rate ..
 
         self.STOPButton.setEnabled(True)
         self.RUNButton.setEnabled(False)
@@ -261,6 +283,7 @@ class BASLER_GUI(QMainWindow):
         # change the pixmap color to red
         self.Rec_status.setStyleSheet("background-color: rgb(255, 0, 0);")
 
+        self.rec_start_time = time.monotonic()
         # create a time that executes the trigger after 500 ms delay to make sure cameras are ready
         if self.trigger and use_hw_trigger:
             self.trigger.fps = self.FrameRateSpin.value()
@@ -305,12 +328,13 @@ class BASLER_GUI(QMainWindow):
             self.basler_recorder.stop_single_cam_show()
 
         if self.multi_view_timer:
+            self.multi_view_timer.stop()
+            self.multi_view_timer = None
             if self.basler_recorder.is_recording:
                 self.basler_recorder.stop_multi_cam_record()
             else:
                 self.basler_recorder.stop_multi_cam_show()
-            self.multi_view_timer.stop()
-            self.multi_view_timer = None
+
 
         if self.single_camviewer:
             if self.single_camviewer.isVisible():
@@ -325,6 +349,8 @@ class BASLER_GUI(QMainWindow):
         if not self.is_remote_ctr:
             self.RUNButton.setEnabled(True)
             self.RECButton.setEnabled(True)
+            self.REC_calib_Button.setEnabled(True)
+
             self.ShowSingleCamButton.setEnabled(True)
 
             self.AutoExposeButton.setEnabled(True)
@@ -418,11 +444,11 @@ class BASLER_GUI(QMainWindow):
         Load camera settings from a json file
         """
         if not self.basler_recorder.cams_connected:
-            self.log.info('Not connected to cameras cant save settings')
+            self.log.info('Not connected to cameras cant load settings')
 
             QMessageBox.information(self,
                                     "Info",
-                                    "Not connected to cameras, cant save settings",
+                                    "Not connected to cameras, cant load settings",
                                     buttons=QMessageBox.StandardButton.Ok)
             return
 
@@ -629,7 +655,7 @@ class BASLER_GUI(QMainWindow):
         self.SessionIDlineEdit.setText("")
 
     def check_and_parse_messages(self):
-        message = self.socket_comm.read_json_message_fast()
+        message = self.socket_comm.read_json_message_fast_linebreak()
         if message:
             # parse message
             if message['type'] == MessageType.start_video_rec.value \
@@ -656,7 +682,7 @@ class BASLER_GUI(QMainWindow):
                         self.FrameRateSpin.setValue(message["frame_rate"])
                 except KeyError:
                     pass
-                self.remote_message_timer.setInterval(10000)  # increase the interval to 10s
+                self.remote_message_timer.setInterval(5000)  # increase the interval to 10s
 
                 if message['type'] == MessageType.start_video_rec.value:
                     self.log.info("got message to start recording")
@@ -693,6 +719,49 @@ class BASLER_GUI(QMainWindow):
                 self.log.info("got message that client disconnected")
                 self.exit_remote_mode()
 
+            elif message['type'] == MessageType.copy_files.value:
+                self.log.debug('got message to copy files')
+                self.session_path = message['session_path']
+                if self.session_path:
+                    self.copy_recorded_file()
+
+            elif message['type'] == MessageType.purge_files.value:
+                self.log.debug('got message to purge files')
+                self.purge_recorded_file()
+
+    def purge_recorded_file(self):
+        for videowriter in self.basler_recorder.video_writer_list:
+            if videowriter.stopped:
+                self.log.info(f"Deleting file {videowriter.video_path}")
+                Path(videowriter.video_path).unlink()
+            else:
+                self.log.info(f"Cant delete file {videowriter.video_path} as recorder hasnt finished yet")
+
+    def copy_recorded_file(self):
+        if not self.basler_recorder.is_recording and not self.files_copied:
+            for videowriter in self.basler_recorder.video_writer_list:
+                if videowriter.stopped:
+                    self.log.info(f"Copying file {videowriter.video_path} to {Path(self.session_path) / VIDEO_FOLDER}")
+
+
+                    try:
+                        if 'MusterMaus' in self.session_id:
+                            shutil.copyfile(videowriter.video_path,
+                                            Path(self.session_path) / Path(videowriter.video_path).name)
+                        else:
+                            if Path(self.session_path).exists():
+                                #if not (Path(self.session_path) / VIDEO_FOLDER).exists():
+                                (Path(self.session_path) / VIDEO_FOLDER).mkdir(exist_ok=True)
+                            shutil.copyfile(videowriter.video_path,
+                                            Path(self.session_path) / VIDEO_FOLDER / Path(videowriter.video_path).name)
+                    except (FileNotFoundError, IOError) as e:
+                        self.socket_comm.send_json_message(SocketMessage.respond_copy_fail)
+                        self.log.error(f"Error copying file {e}")
+                        return
+            self.files_copied = True
+            self.log.info(f"Finished copying files to {Path(self.session_path) / VIDEO_FOLDER}")
+            self.socket_comm.send_json_message(SocketMessage.respond_copy)
+
     def app_is_exiting(self):
         # check if recording is running stop if does.
         # close and realize cameras
@@ -717,7 +786,6 @@ class BASLER_GUI(QMainWindow):
                                               message_text,
                                               buttons=QMessageBox.StandardButton.No | QMessageBox.StandardButton.Yes)
             if message == QMessageBox.StandardButton.No:
-                self.log.info('pressed no')
                 event.ignore()
                 return
             elif message == QMessageBox.StandardButton.Abort:

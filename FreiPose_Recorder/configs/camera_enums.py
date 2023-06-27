@@ -22,6 +22,12 @@ class CameraIdentificationSN(Enum):
     cam42 = '22561089'
     cam43 = '40069823'
 
+    cam00 = '22551262'
+    cam01 = '22561086'
+    cam02 = '22561087'
+    cam03 = '22561096'
+    #cam04 = '22561089'
+
 
 
 if __name__ == "__main__":

@@ -1,13 +1,10 @@
 import logging, random
-import os
-import threading
 # import cv2
 import time
 import datetime
 from pathlib import Path
 
 import numpy as np
-from collections import defaultdict
 from threading import Event, Thread
 from queue import Queue, Full
 
@@ -17,11 +14,13 @@ from pypylon import pylon
 # from utils.general_util import my_mkdir
 # from utils.VideoWriterFast import VideoWriterFast
 
-from utils.VideoWriterFast_gear import VideoWriterFast
-from utils.VideoWriterFast_gear import QueueOverflow
+from FreiPose_Recorder.utils.VideoWriterFast_gear import VideoWriterFast
+from FreiPose_Recorder.utils.VideoWriterFast_gear import QueueOverflow
 # from utils.StitchedImage import StitchedImage  # this is way to slow for real-time application
 
-from configs.camera_enums import CameraIdentificationSN
+from FreiPose_Recorder.configs.camera_enums import CameraIdentificationSN
+
+from FreiPose_Recorder.params import TIME_STAMP_STRING, TRIGGER_LINE_IN, TRIGGER_LINE_OUT, MAX_FPS
 
 
 # Another way to get warnings when images are missing ... not used
@@ -43,7 +42,6 @@ NUM_CAMERAS = 5  # simulated cameras
 # setup demo environment with emulated cameras
 # os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
 # remove when not needed anymore
-TRIGGER_LINE = "Line3"
 
 
 def rel_close(v, max_v, thresh=5.0):
@@ -67,8 +65,9 @@ class Recorder(object):
         self.current_cam = None
         self.single_view_thread = None
         self.single_view_queue = None
+        self.multi_view_thread = None
         self.cams_connected = False
-        self.cam_array = None
+        self.cam_array = []
         self._verbosity = verbosity
         self.save_path = ""
         # self._camera_info = get_camera_infos()
@@ -79,7 +78,7 @@ class Recorder(object):
         self._rid = 0
         self.fps = 10
         self._trigger = None
-        self.grab_timeout = 1000  # in
+        self.grab_timeout = 10000  # in
         self.internal_queue_size = 100  # Size of the QUEUE for transfering images between threads
 
         self.log = logging.getLogger('BaslerRecorder')
@@ -93,8 +92,8 @@ class Recorder(object):
     def fps(self, fps_new):
         if fps_new < 1:
             self.__fps = 1
-        elif fps_new > 100:
-            self.__fps = 100  # todo make parameters
+        elif fps_new > MAX_FPS:
+            self.__fps = MAX_FPS
         else:
             self.__fps = fps_new
 
@@ -166,9 +165,9 @@ class Recorder(object):
 
         cam.AcquisitionFrameRateEnable = True
 
-        cam.MaxNumBuffer.SetValue(16)  # how many buffers there are in total (empty and full)
+        cam.MaxNumBuffer.SetValue(1024)  # how many buffers there are in total (empty and full)
         cam.OutputQueueSize.SetValue(
-            8)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
+            512)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
 
         cam.AcquisitionMode = 'Continuous'
         cam.TriggerMode = 'Off'
@@ -189,21 +188,22 @@ class Recorder(object):
             cam.AcquisitionFrameRateAbs = 200  # maybe basler 2 cameras ?
         cam.AcquisitionFrameRateEnable = True  # should this be False ? 
         # behavior wrt to these values is a bit strange to me. Important seems to be to use LastImages Strategy and make MaxNumBuffers larger than OutputQueueSize. Otherwise its not guaranteed to work
-        cam.MaxNumBuffer.SetValue(16)  # how many buffers there are in total (empty and full)
+        cam.MaxNumBuffer.SetValue(1024)  # how many buffers there are in total (empty and full)
         cam.OutputQueueSize.SetValue(
-            8)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
+            512)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
 
         cam.AcquisitionMode = 'Continuous'
         # cam.PixelFormat.SetValue("BGR8")
         # cam.DemosaicingMode.SetValue('BaslerPGI')
         #  cam.PixelFormat = 'Mono8'
 
-        # todo Parametrize those settings !! 
-        cam.LineSelector = "Line3"
+        cam.LineSelector = TRIGGER_LINE_IN
         cam.LineMode = "Input"
-
+        #cam.LineSelector = TRIGGER_LINE_OUT
+        #cam.LineMode = "Output"
+        # cam.LineSource = pylon. # set to exposureactive
         cam.TriggerSelector = "FrameStart"
-        cam.TriggerSource = TRIGGER_LINE
+        cam.TriggerSource = TRIGGER_LINE_IN
         cam.TriggerMode = "On"
         cam.TriggerActivation = 'RisingEdge'
 
@@ -705,9 +705,10 @@ class Recorder(object):
         self.is_viewing = True
 
     def stop_multi_cam_show(self):
-        self.log.debug('Stopping multi-view, waiting for join')
-        self.multi_view_thread.join()  # wait for thread to finish
-        self.log.debug('thread joined')
+        if self.multi_view_thread:
+            self.log.debug('Stopping multi-view, waiting for join')
+            self.multi_view_thread.join()  # wait for thread to finish
+            self.log.debug('thread joined')
         self.stop_event = None
         self.multi_view_thread = None
         self.cams_context = None
@@ -736,6 +737,7 @@ class Recorder(object):
                 self.log.error(f"Queue buffer{context_id}overrun !")
                 break
         self.cam_array.StopGrabbing()
+        self.is_viewing = False
 
     def run_multi_cam_record(self, stop_event: Event, filename: str = 'testrec', use_hw_trigger: bool = False):
         was_closed = False
@@ -754,6 +756,12 @@ class Recorder(object):
 
         self.cams_context = {}
         self.video_writer_list = list()
+        try:
+            timestamp = datetime.datetime.now().strftime(TIME_STAMP_STRING)
+        except (TypeError,ValueError):
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+
+        # to make sure all have the same timestamp
         for c_id, cam in enumerate(self.cam_array):
             if use_hw_trigger:
                 self._config_cams_hw_trigger(cam)
@@ -761,7 +769,7 @@ class Recorder(object):
                 self._config_cams_continuous(cam)
 
             self.cams_context[cam.GetCameraContext()] = c_id
-            video_name = f"{filename}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_" \
+            video_name = f"{filename}_{timestamp}_" \
                          f"{cam.DeviceInfo.GetUserDefinedName()}.mp4"
             video_name = (Path(self.save_path) / video_name).as_posix()
             self.video_writer_list.append(VideoWriterFast(video_name,
@@ -834,6 +842,8 @@ class Recorder(object):
 
             except genicam.TimeoutException as e:
                 self.log.error(e)
+                #TODO signal to GUI, somwthing went wrong and recording is aborted
+                # maybe set an event..
                 break
             except Full:
                 self.log.error(f"Queue buffer{context_id}overrun !")
@@ -842,7 +852,7 @@ class Recorder(object):
                 self.log.error(f"Queue buffer{context_id}overrun !")
                 break
         self.cam_array.StopGrabbing()
-
+        self.is_recording = False
 
 if __name__ == "__main__":
     baslerRec = Recorder()
