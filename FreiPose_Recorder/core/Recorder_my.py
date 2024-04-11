@@ -11,12 +11,8 @@ from queue import Queue, Full
 from pypylon import genicam
 from pypylon import pylon
 
-# from utils.general_util import my_mkdir
-# from utils.VideoWriterFast import VideoWriterFast
-
 from FreiPose_Recorder.utils.VideoWriterFast_gear import VideoWriterFast
 from FreiPose_Recorder.utils.VideoWriterFast_gear import QueueOverflow
-# from utils.StitchedImage import StitchedImage  # this is way to slow for real-time application
 
 from FreiPose_Recorder.configs.camera_enums import CameraIdentificationSN
 
@@ -37,10 +33,10 @@ class MyImageEventHandler(pylon.ImageEventHandler):
     def OnImageGrabbed(self, camera, grabResult):
         print("CSampleImageEventHandler::OnImageGrabbed called.")
 
-
-NUM_CAMERAS = 5  # simulated cameras
+import os
+NUM_CAMERAS = 4  # simulated cameras
 # setup demo environment with emulated cameras
-# os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
+os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
 # remove when not needed anymore
 
 
@@ -52,10 +48,11 @@ def rel_close(v, max_v, thresh=5.0):
 
 
 class Recorder(object):
+    """Class to handle recording of multiple cameras"""
     def __init__(self, verbosity=0, write_timestamps=False):
         self.write_timestamps = write_timestamps
         self.codec = 'divx'
-        self.video_writer_list = []
+        self.video_writer_list = []  # list of video writers
         self.is_recording = False
         self.is_viewing = False
         self.cams_context = None
@@ -86,16 +83,16 @@ class Recorder(object):
 
     @property
     def fps(self):
-        return self.__fps
+        return self._fps
 
     @fps.setter
     def fps(self, fps_new):
         if fps_new < 1:
             self.__fps = 1
         elif fps_new > MAX_FPS:
-            self.__fps = MAX_FPS
+            self._fps = MAX_FPS
         else:
-            self.__fps = fps_new
+            self._fps = fps_new
 
     def get_cam_info(self) -> list:
         self.scan_cams()
@@ -115,6 +112,7 @@ class Recorder(object):
         devices = tlFactory.EnumerateDevices()
         if len(devices) == 0:
             self.log.info('No cameras present')
+            self.cam_array = []
             return
 
         self.log.debug(f'Found {len(devices)} cameras')
@@ -127,7 +125,7 @@ class Recorder(object):
             try:
                 CameraIdentificationSN(sn)
             except ValueError:
-                self.log.info(f'Connected camera {sn} not found in Enum')
+                self.log.warning(f'Connected camera {sn} not found in Enum')
 
     def connect_cams(self):
         self.cam_array.Open()
@@ -146,7 +144,9 @@ class Recorder(object):
         self.log.debug(f'Connected to {self.cam_array.GetSize()} cameras')
 
     def disconnect_cams(self):
-        self.cam_array.Close()
+        """ Disconnects all cameras"""
+        if self.cam_array:
+            self.cam_array.Close()
         self.cams_connected = False
 
     def _config_cams_continuous(self, cam):

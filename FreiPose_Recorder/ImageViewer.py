@@ -104,38 +104,6 @@ class ImageView_camera(QWidget):
             print("Image could not be displayed. this format is not implemented")
 
 
-
-class ImageView_camera_old(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.image_view = ImageView(self)
-        self.image_view.show()
-        self.image_view.ui.histogram.hide()
-        self.image_view.ui.menuBtn.hide()
-        self.image_view.ui.roiBtn.hide()
-        self.image_view.setImage(np.random.randint(0, 255, (128, 128), np.uint8))
-
-        # self.image_view.autoRange()
-        # self.image_view.ui.roiPlot.close()
-        # self.layout = QVBoxLayout(self)
-        # self.layout.addWidget(self.image_view)
-
-        # self.image_view = RawImageWidget(self, scaled=True)
-        # self.image_view.show()
-        # self.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum))
-
-        # self.plot_widget = PlotWidget(self)
-        # self.plot_widget.setRange(QtCore.QRectF(0, 0, 1024, 1024))
-        # imagedata = np.random.random((256, 256))
-        # self.image_view = ImageItem()
-        # self.plot_widget.addItem(self.image_view)
-        # self.plot_widget.hideAxis('left')
-        # self.plot_widget.hideAxis('bottom')
-
-    def updateView(self, img):
-        self.image_view.setImage(img.T)
-
-
 class SingleCamViewer(QDialog):
     def __init__(self, parent, cam_name):
         super(SingleCamViewer, self).__init__(parent)
@@ -269,7 +237,7 @@ class CameraSettingsTab(QWidget):
         self.parent = parent
         self._num_cameras = nr_cams
         self.cam_settings = []
-        self.log.debug('CameraTab created')
+        #self.log.debug('CameraTab created')
         self.gain_spin_list = []
         self.exposure_spin_list = []
         self.color_mode_list = []
