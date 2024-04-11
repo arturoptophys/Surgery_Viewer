@@ -29,7 +29,6 @@ from PyQt6 import uic, QtGui, QtSerialPort
 from pathlib import Path
 from FreiPose_Recorder.core.Recorder_my import Recorder
 from FreiPose_Recorder.ImageViewer import SingleCamViewer, RemoteConnDialog
-from FreiPose_Recorder.utils.StitchedImage import StitchedImage
 from FreiPose_Recorder.utils.socket_utils import SocketComm, SocketMessage, MessageStatus, MessageType
 from FreiPose_Recorder.core.Trigger import TriggerArduino
 from FreiPose_Recorder.params import *
@@ -39,7 +38,7 @@ log.setLevel(logging.DEBUG)
 
 #logging.basicConfig(filename=f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.4.5"
+VERSION = "0.4.6"
 
 
 
@@ -229,23 +228,6 @@ class BASLER_GUI(QMainWindow):
         if not self.basler_recorder.is_recording and not self.basler_recorder.is_viewing:
             self.log.error('Basler recording stopped internally')
             self.socket_comm.send_json_message(SocketMessage.respond_recording_fail)
-
-
-    def update_multi_view_singlewindow(self):
-        # call this from a thread ? maybe not seems to work so far
-        try:
-            image_list = []  # * self.number_cams
-            for c_id in range(self.number_cams):
-                image_list.append(self.basler_recorder.multi_view_queue[c_id].get_nowait())
-            # self.log.debug(f"Nr elements in q {self.basler_recorder.single_view_queue.qsize()}")
-            t0 = time.monotonic()
-            stitched_image = StitchedImage(image_list).image
-            print(f'It took {(time.monotonic() - t0):0.3f} s to stitch images')
-        except Empty:
-            return
-        self.statusbar.showMessage(f"In Q :{self.basler_recorder.multi_view_queue[0].qsize()}")
-        # self.ViewWidget.updateView(currentImg)
-        self.ViewWidget.updateView(stitched_image)
 
     def start_recording(self):
         self.files_copied = False

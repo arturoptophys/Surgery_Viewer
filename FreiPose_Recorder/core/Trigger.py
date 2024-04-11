@@ -1,6 +1,6 @@
 import serial
 import time
-from FreiPose_Recorder.configs.params import params_t
+from FreiPose_Recorder.params import MAX_FPS
 
 class TriggerArduino:
     def __init__(self, serial_port):
@@ -31,7 +31,7 @@ class TriggerArduino:
     @fps.setter
     def fps(self, fps):
         fps = float(fps)
-        if fps < params_t.min_fps or fps >= params_t.max_fps:
+        if fps < 1 or fps >= MAX_FPS:
             print('Invalid fps value', fps)
             return
         self._fps = fps

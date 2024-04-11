@@ -4,13 +4,9 @@ import sys
 import cv2
 import time
 
-# import the Queue class from Python 3
-if sys.version_info >= (3, 0):
-    from queue import Queue
+from queue import Queue
 
-# otherwise, import the Queue class for Python 2.7
-else:
-    from Queue import Queue
+
 
 
 class VideoReaderFast:

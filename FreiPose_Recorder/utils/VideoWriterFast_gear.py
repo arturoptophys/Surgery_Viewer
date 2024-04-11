@@ -72,7 +72,7 @@ class VideoWriterFast:
                     self.write_speed = 0.85*self.write_speed + 0.15*(time.time() - start)
 
             else:
-                time.sleep(0.001)  # Rest for 10ms, we have an empty queue
+                time.sleep(0.001)  # Rest for 1ms, we have an empty queue
 
         self.stream.close()
 
