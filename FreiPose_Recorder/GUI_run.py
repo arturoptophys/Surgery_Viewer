@@ -2,14 +2,6 @@
 Tool to record videos from multiple Basler cameras synchronously. Based on RecTool by Christian.
 
 Author: Artur artur.schneider@biologie.uni-freiburg.de
-
-Planned features:
-- save timestamps from taken frames
-
-TODO:
-- test recording speeds / loosing frames
-50 fps seems to work with no issue
-implemented but not tested
 """
 
 import datetime
@@ -36,19 +28,31 @@ from FreiPose_Recorder.params import *
 log = logging.getLogger('main')
 log.setLevel(logging.DEBUG)
 
-#logging.basicConfig(filename=f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
+#make the logging to file
+if LOG2FILE:
+    logging.basicConfig(filename=f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w',
+                        format='%(asctime)s - %(levelname)s - %(message)s')
 
 VERSION = "0.4.6"
 
 
+# TODO
+# move camera enums somewhere less convoluted
+# get logger running into file
+# move LineIn setting to the per camera parameter file
+# add Bayesmodes as color options
+# add a way to display/save color videos correctly when using RGB, BGR or Bayes modes
+# update to pypylon 3 ?
 
 class BASLER_GUI(QMainWindow):
     def __init__(self):
         super(BASLER_GUI, self).__init__()
-        self.session_path = None
-        self.files_copied = False
+        self.MultiViewWidget = None  # is loaded from the GUI_design.ui
+        self.CameraSettings = None   # is loaded from the GUI_design.ui
+        self.session_path = None  # path to the current session
+        self.files_copied = False  # flag to check if files have been copied
         self.timer_update_counter = 0
-        self.rec_start_time = None
+        self.rec_start_time = None  # time when recording started
         self.calib_start_timer = None
         self.calib_stop_timer = None
         self.trigger_timer = None
@@ -63,9 +67,9 @@ class BASLER_GUI(QMainWindow):
         self.log = logging.getLogger('GUI')
         self.log.setLevel(logging.DEBUG)
 
-        codec_to_try = ["h264_nvenc", "libx264", "mpeg4", "mpeg2video", "libxvid", "libx264rgb"]
         self.Codec_comboBox.addItems(codec_to_try)
 
+        #Setting icons for some buttons for prettiness
         self.RUNButton.setIcon(QtGui.QIcon("GUI/icons/play.svg"))
         self.RECButton.setIcon(QtGui.QIcon("GUI/icons/record.svg"))
         self.STOPButton.setIcon(QtGui.QIcon("GUI/icons/stop.svg"))
@@ -78,7 +82,6 @@ class BASLER_GUI(QMainWindow):
         self.FlipXButton.setIcon(QtGui.QIcon("GUI/icons/ArrowsRightLeft.svg"))
         self.FlipYButton.setIcon(QtGui.QIcon("GUI/icons/ArrowsUpDown.svg"))
         self.Rec_status.setPixmap(QtGui.QIcon("GUI/icons/VideoCameraSlash.svg").pixmap(64))
-        # self.CameraSettings2.toolbox.setIcon(QtGui.QIcon("GUI/icons/AdjustmentsHorizontal.svg"))
 
         self.ConnectSignals()
         self.basler_recorder = Recorder(write_timestamps=SAVE_TIMESTAMPS)
@@ -91,15 +94,15 @@ class BASLER_GUI(QMainWindow):
             self.RemoteModeButton.deleteLater()
             self.Client_label.deleteLater()
 
-        self.is_remote_ctr = False
-        if USE_ARDUINO_TRIGGER:
+        self.is_remote_ctr = False  # bool whether the GUI is currently in remote mode
+
+        if USE_ARDUINO_TRIGGER:  # NOT IMPLEMENTE
             serial_port = f"/dev/{QtSerialPort.QSerialPortInfo.availablePorts()[0].portName()}"
-            # TODO for windows use the port name
+            # find a way to get the port name on windows machines
             self.trigger = TriggerArduino(serial_port)
+            raise NotImplementedError('Arduino trigger not implemented')
         else:
             self.trigger = None
-
-
 
     ### Device Connectivity ####
     def scan_cams(self):
@@ -111,37 +114,39 @@ class BASLER_GUI(QMainWindow):
             self.Devices_textEdit.setText(f"Found cameras SN:\n{found_cams}")
 
             self.ConnectButton.setEnabled(True)
-            self.ScanDevButton.setEnabled(False)
+            self.ScanDevButton.setEnabled(False)  #Y only scan once ?
         else:
             self.Devices_textEdit.clear()
             self.Devices_textEdit.setText(f"Found no cameras !!\n (Re-)Connect a camera and try again.")
 
         self.MultiViewWidget.num_cameras = nr_cams
-        self.CameraSettings2.num_cameras = nr_cams
+        self.CameraSettings.num_cameras = nr_cams
 
     def connect_to_cams(self):
         self.basler_recorder.connect_cams()
 
         for c_id, cam in enumerate(self.basler_recorder.cam_array):
-            self.CameraSettings2.toolbox.setItemText(c_id, cam.DeviceInfo.GetUserDefinedName())
-            self.CameraSettings2.exposure_spin_list[c_id].blockSignals(True)  # block triggering of events
-            self.CameraSettings2.gain_spin_list[c_id].blockSignals(True)
-            self.CameraSettings2.exposure_spin_list[c_id].setValue(self.basler_recorder.get_cam_exposureTime(cam))
-            self.CameraSettings2.gain_spin_list[c_id].setValue(self.basler_recorder.get_cam_gain(cam))
+            self.CameraSettings.toolbox.setItemText(c_id, cam.DeviceInfo.GetUserDefinedName())
+            self.CameraSettings.exposure_spin_list[c_id].blockSignals(True)  # block triggering of events
+            self.CameraSettings.gain_spin_list[c_id].blockSignals(True)
+            self.CameraSettings.color_mode_list[c_id].blockSignals(True)
+            self.CameraSettings.exposure_spin_list[c_id].setValue(self.basler_recorder.get_cam_exposureTime(cam))
+            self.CameraSettings.gain_spin_list[c_id].setValue(self.basler_recorder.get_cam_gain(cam))
             gain_limits, exp_limits, colormodes = self.basler_recorder.get_cam_limits(cam)
             if exp_limits:
-                self.CameraSettings2.exposure_spin_list[c_id].setMinimum(exp_limits[0])
-                self.CameraSettings2.exposure_spin_list[c_id].setMaximum(exp_limits[1])
+                self.CameraSettings.exposure_spin_list[c_id].setMinimum(exp_limits[0])
+                self.CameraSettings.exposure_spin_list[c_id].setMaximum(exp_limits[1])
             if gain_limits:
-                self.CameraSettings2.gain_spin_list[c_id].setMinimum(gain_limits[0])
-                self.CameraSettings2.gain_spin_list[c_id].setMaximum(gain_limits[1])
+                self.CameraSettings.gain_spin_list[c_id].setMinimum(gain_limits[0])
+                self.CameraSettings.gain_spin_list[c_id].setMaximum(gain_limits[1])
             # add color modes to list
-            self.CameraSettings2.color_mode_list[c_id].clear()
-            self.CameraSettings2.color_mode_list[c_id].addItems(colormodes)
-            self.CameraSettings2.exposure_spin_list[c_id].blockSignals(False)  # unblock triggering of events
-            self.CameraSettings2.gain_spin_list[c_id].blockSignals(False)
+            self.CameraSettings.color_mode_list[c_id].clear()
+            self.CameraSettings.color_mode_list[c_id].addItems(colormodes)
+            self.CameraSettings.exposure_spin_list[c_id].blockSignals(False)  # unblock triggering of events
+            self.CameraSettings.gain_spin_list[c_id].blockSignals(False)
+            self.CameraSettings.color_mode_list[c_id].blockSignals(False)
 
-        self.CameraSettings2.toolbox.setCurrentIndex(0)
+        self.CameraSettings.toolbox.setCurrentIndex(0)
         self.RUNButton.setEnabled(True)
         self.RECButton.setEnabled(True)
         self.REC_calib_Button.setEnabled(True)
@@ -150,7 +155,10 @@ class BASLER_GUI(QMainWindow):
         self.ConnectButton.setEnabled(False)
 
         # need to connect beforehand
-        self.load_settings('default_settings.settings.json')
+        try:
+            self.load_settings('default_settings.settings.json')
+        except FileNotFoundError:
+            self.log.warning('No default settings file found')
 
     def run_cams(self):
         self.stop_event = Event()
@@ -172,9 +180,9 @@ class BASLER_GUI(QMainWindow):
         self.Rec_status.setPixmap(QtGui.QIcon("GUI/icons/VideoCamera.svg").pixmap(64))
         # change the pixmap color to green
         self.Rec_status.setStyleSheet("background-color: rgb(0, 255, 0);")
-        for color_mode in self.CameraSettings2.color_mode_list:
+        for color_mode in self.CameraSettings.color_mode_list:
             color_mode.setEnabled(False)
-            
+
         self.rec_start_time = time.monotonic()
         # create a time that executes the trigger after 500 ms delay to make sure cameras are ready
         if self.trigger and use_hw_trigger:
@@ -191,13 +199,12 @@ class BASLER_GUI(QMainWindow):
         else:
             self.recording_duration_label.setText(f"{current_run_time:.0f}s")
 
-
     def update_multi_view(self):
         # call this from a thread ? or maybe not
         self.timer_update_counter += 1
         if self.timer_update_counter >= 10:
-            self.update_rec_timer() # dont call this too often ?
-            self.timer_update_counter = 0        
+            self.update_rec_timer()  # dont call this too often ?
+            self.timer_update_counter = 0
         try:
             #t0 = time.monotonic()
             for c_id in range(self.number_cams):
@@ -258,7 +265,7 @@ class BASLER_GUI(QMainWindow):
         self.WhiteBalanceButton.setEnabled(False)
         self.FlipXButton.setEnabled(False)
         self.FlipYButton.setEnabled(False)
-        self.CameraSettings2.toolbox.setEnabled(False)
+        self.CameraSettings.toolbox.setEnabled(False)
         self.All_cams_checkBox.setEnabled(False)
         self.SettingsSaveButton.setEnabled(False)
         self.SettingsLoadButton.setEnabled(False)
@@ -319,7 +326,6 @@ class BASLER_GUI(QMainWindow):
             else:
                 self.basler_recorder.stop_multi_cam_show()
 
-
         if self.single_camviewer:
             if self.single_camviewer.isVisible():
                 self.single_camviewer.close()
@@ -342,13 +348,13 @@ class BASLER_GUI(QMainWindow):
             self.WhiteBalanceButton.setEnabled(True)
             self.FlipXButton.setEnabled(True)
             self.FlipYButton.setEnabled(True)
-            self.CameraSettings2.toolbox.setEnabled(True)
+            self.CameraSettings.toolbox.setEnabled(True)
             self.All_cams_checkBox.setEnabled(True)
             self.SettingsSaveButton.setEnabled(True)
             self.SettingsLoadButton.setEnabled(True)
             self.FrameRateSpin.setEnabled(True)
 
-        for color_mode in self.CameraSettings2.color_mode_list:
+        for color_mode in self.CameraSettings.color_mode_list:
             color_mode.setEnabled(True)
 
     def show_single_cam(self):
@@ -447,7 +453,7 @@ class BASLER_GUI(QMainWindow):
         with open(file, 'r') as fi:
             cam_lib = json.load(fi)
 
-        for c_id,cam in enumerate(self.basler_recorder.cam_array):
+        for c_id, cam in enumerate(self.basler_recorder.cam_array):
             try:
                 settings = cam_lib[cam.DeviceInfo.GetUserDefinedName()]
             except KeyError:
@@ -455,17 +461,17 @@ class BASLER_GUI(QMainWindow):
                               f'with SN: {cam.DeviceInfo.GetSerialNumber()}')
                 continue
             self.basler_recorder.set_cam_settings(cam, settings)
-            self.CameraSettings2.exposure_spin_list[c_id].blockSignals(True)
-            self.CameraSettings2.gain_spin_list[c_id].blockSignals(True)
-            self.CameraSettings2.exposure_spin_list[c_id].setValue(settings['exp_time'])
-            self.CameraSettings2.gain_spin_list[c_id].setValue(settings['gain'])
-            self.CameraSettings2.color_mode_list[c_id].setCurrentText(settings['color_mode'])
-            self.CameraSettings2.exposure_spin_list[c_id].blockSignals(False)
-            self.CameraSettings2.gain_spin_list[c_id].blockSignals(False)
+            self.CameraSettings.exposure_spin_list[c_id].blockSignals(True)
+            self.CameraSettings.gain_spin_list[c_id].blockSignals(True)
+            self.CameraSettings.exposure_spin_list[c_id].setValue(settings['exp_time'])
+            self.CameraSettings.gain_spin_list[c_id].setValue(settings['gain'])
+            self.CameraSettings.color_mode_list[c_id].setCurrentText(settings['color_mode'])
+            self.CameraSettings.exposure_spin_list[c_id].blockSignals(False)
+            self.CameraSettings.gain_spin_list[c_id].blockSignals(False)
 
             #TODO set values in the GUI !
 
-            #self.CameraSettings2.exposure_spin_list[]
+            #self.CameraSettings.exposure_spin_list[]
         try:
             self.HWTrig_checkBox.setChecked(cam_lib['HW_trigg'])
             self.crf_spinBox.setValue(cam_lib['crf'])
@@ -489,7 +495,7 @@ class BASLER_GUI(QMainWindow):
     ## IMAGE CONTROL ####
     def get_current_tab(self) -> int:
         """Returns the ID of currently open tab"""
-        return self.CameraSettings2.toolbox.currentIndex()
+        return self.CameraSettings.toolbox.currentIndex()
 
     # those functions are now blocking ? maybe make sure they r not ? create threads for actual adjustments ?
     def auto_expose(self):
@@ -498,22 +504,22 @@ class BASLER_GUI(QMainWindow):
             for current_camid in range(len(self.basler_recorder.cam_array)):
                 final_exp = self.basler_recorder.run_auto_exposure(current_camid)
                 # todo block triggerign of setting values !
-                self.CameraSettings2.exposure_spin_list[current_camid].setValue(final_exp)
+                self.CameraSettings.exposure_spin_list[current_camid].setValue(final_exp)
         else:
             current_camid = self.get_current_tab()
             final_exp = self.basler_recorder.run_auto_exposure(current_camid)
-            self.CameraSettings2.exposure_spin_list[current_camid].setValue(final_exp)
+            self.CameraSettings.exposure_spin_list[current_camid].setValue(final_exp)
 
     def auto_gain(self):
         """Runs autogain routine for given/all camera"""
         if self.All_cams_checkBox.isChecked():
             for current_camid in range(len(self.basler_recorder.cam_array)):
                 final_gain = self.basler_recorder.run_auto_gain(current_camid)
-                self.CameraSettings2.gain_spin_list[current_camid].setValue(final_gain)
+                self.CameraSettings.gain_spin_list[current_camid].setValue(final_gain)
         else:
             current_camid = self.get_current_tab()
             final_gain = self.basler_recorder.run_auto_gain(current_camid)
-            self.CameraSettings2.gain_spin_list[current_camid].setValue(final_gain)
+            self.CameraSettings.gain_spin_list[current_camid].setValue(final_gain)
 
     def white_balance(self):
         """Runs auto white balance routine for given/all camera"""
@@ -527,15 +533,15 @@ class BASLER_GUI(QMainWindow):
     def set_gain_exposure(self):
         """set the gain and exposure time for the current camera"""
         current_camid = self.get_current_tab()
-        exp_time = self.CameraSettings2.exposure_spin_list[current_camid].value()
-        gain = self.CameraSettings2.gain_spin_list[current_camid].value()
+        exp_time = self.CameraSettings.exposure_spin_list[current_camid].value()
+        gain = self.CameraSettings.gain_spin_list[current_camid].value()
         self.basler_recorder.set_gain_exposure(current_camid, gain, exp_time)
 
     def set_color_mode(self, color_mode: str):
         """set the gain and exposure time for the current camera"""
         current_camid = self.get_current_tab()
         self.basler_recorder.set_color_mode(current_camid, color_mode)
-        # exp_time = self.CameraSettings2.exposure_spin_list[current_camid]
+        # exp_time = self.CameraSettings.exposure_spin_list[current_camid]
 
     def flip_x(self):
         """
@@ -600,7 +606,7 @@ class BASLER_GUI(QMainWindow):
         self.SettingsSaveButton.setEnabled(False)
         self.SettingsLoadButton.setEnabled(False)
         self.Save_pathButton.setEnabled(False)
-        self.CameraSettings2.setEnabled(False)
+        self.CameraSettings.setEnabled(False)
         self.Codec_comboBox.setEnabled(False)
         self.crf_spinBox.setEnabled(False)
         self.HWTrig_checkBox.setEnabled(False)
@@ -636,7 +642,7 @@ class BASLER_GUI(QMainWindow):
         self.SettingsLoadButton.setEnabled(True)
         self.FrameRateSpin.setEnabled(True)
         self.Save_pathButton.setEnabled(True)
-        self.CameraSettings2.setEnabled(True)
+        self.CameraSettings.setEnabled(True)
         self.Codec_comboBox.setEnabled(True)
         self.crf_spinBox.setEnabled(True)
         self.HWTrig_checkBox.setEnabled(True)
@@ -737,7 +743,6 @@ class BASLER_GUI(QMainWindow):
                 if videowriter.stopped:
                     self.log.info(f"Copying file {videowriter.video_path} to {Path(self.session_path) / VIDEO_FOLDER}")
 
-
                     try:
                         if 'MusterMaus' in self.session_id:
                             shutil.copyfile(videowriter.video_path,
@@ -757,20 +762,20 @@ class BASLER_GUI(QMainWindow):
             self.socket_comm.send_json_message(SocketMessage.respond_copy)
 
     def app_is_exiting(self):
+        """Routine to be run when the app is exiting, cleanup and release of resources"""
         # check if recording is running stop if does.
-        # close and realize cameras
         self.stop_cams()  # stop any grabbing still ongoing
         if self.socket_comm:
             self.socket_comm.close_socket()
-        if self.basler_recorder.cam_array:  # close cameras if those were open
-            self.basler_recorder.cam_array.Close()
-        pass
+        self.basler_recorder.disconnect_cams()  # close and release cameras
 
     def closeEvent(self, event):
         """
-        Overloaded close event to make sure that all cameras are closed and all threads are stopped
+        Overriden close event to make sure that all cameras are closed and all threads are stopped
         """
         self.log.info("Received window close event.")
+
+        # If recording is still running, ask if user wants to abort
         if self.basler_recorder.is_recording or self.is_remote_ctr:
             message_text = "Recording still running. Abort ?" if self.basler_recorder.is_recording \
                 else "Remote mode is active. Abort ?"
@@ -779,10 +784,7 @@ class BASLER_GUI(QMainWindow):
                                               "Really quit?",
                                               message_text,
                                               buttons=QMessageBox.StandardButton.No | QMessageBox.StandardButton.Yes)
-            if message == QMessageBox.StandardButton.No:
-                event.ignore()
-                return
-            elif message == QMessageBox.StandardButton.Abort:
+            if message == QMessageBox.StandardButton.No or message == QMessageBox.StandardButton.Abort:
                 event.ignore()
                 return
             elif message == QMessageBox.StandardButton.Yes:

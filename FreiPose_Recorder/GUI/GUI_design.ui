@@ -407,7 +407,7 @@ Devices</string>
      <string>Show in Extra window</string>
     </property>
    </widget>
-   <widget class="CameraSettingsTab" name="CameraSettings2" native="true">
+   <widget class="CameraSettingsTab" name="CameraSettings" native="true">
     <property name="geometry">
      <rect>
       <x>1280</x>
@@ -747,7 +747,7 @@ REMOTE mode</string>
    <zorder>DisableViz_checkBox</zorder>
    <zorder>ExtraWindowButton</zorder>
    <zorder>MultiViewWidget</zorder>
-   <zorder>CameraSettings2</zorder>
+   <zorder>CameraSettings</zorder>
    <zorder>Save_pathButton</zorder>
    <zorder>REC_calib_Button</zorder>
    <zorder>crf_spinBox</zorder>
