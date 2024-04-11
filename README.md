@@ -31,6 +31,10 @@ To Run the GUI from the commandline:
 
 Add your cameras to configs.camera_enum.py. This gives your cameras unique names.
 
+    #edit FreiPose_Recorder/configs/camera_enums.py
+    #add the serial number of your cams and a name e.g. cam42 = '22561089'
+
+
 Start the RecordTool
     
     python GUI_run.py    
@@ -40,3 +44,5 @@ Convert recorded videos to single frames
 
     python vid2frames.py recordings/take00/run000_cam5.avi --out-path ./recordings_frames/
 
+
+Default settings to be loaded upon connection should be saved as FreiPose_Recorder/default_settings.settings.json
