@@ -158,7 +158,10 @@ class BASLER_GUI(QMainWindow):
         try:
             self.load_settings('default_settings.settings.json')
         except FileNotFoundError:
-            self.log.warning('No default settings file found')
+            try:
+                self.load_settings('default.settings.json')
+            except FileNotFoundError:
+                self.log.warning('No default settings file found')
 
 
 
@@ -546,8 +549,7 @@ class BASLER_GUI(QMainWindow):
         self.basler_recorder.set_gain_exposure(current_camid, gain, exp_time)
 
     def set_color_mode(self, color_mode: str):
-        """set the colormode for the current camera"""
-        #APPArently this is not called anywhere
+        """set the colormode for the current camera, this is poorly used by ImageViewer.py"""
         current_camid = self.get_current_tab()
         self.basler_recorder.set_color_mode(current_camid, color_mode)
         # exp_time = self.CameraSettings.exposure_spin_list[current_camid]

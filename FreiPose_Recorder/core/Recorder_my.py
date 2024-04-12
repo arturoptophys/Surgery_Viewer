@@ -189,9 +189,6 @@ class Recorder(object):
             512)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
 
         cam.AcquisitionMode.Value = 'Continuous'
-        # cam.PixelFormat.SetValue("BGR8")
-        # cam.DemosaicingMode.SetValue('BaslerPGI')
-        #  cam.PixelFormat = 'Mono8'
 
         #todo move this to camera config? only leave triggermode on ?
         cam.LineSelector.Value = TRIGGER_LINE_IN
@@ -570,6 +567,8 @@ class Recorder(object):
             cam.PixelFormat.SetValue(settings['color_mode'])
         except genicam.LogicalErrorException: # Not implemented for this camera
             print('Could not set color mode')
+        except genicam.InvalidArgumentException:
+            print(f"Color mode {settings['color_mode']} not available for {cam.DeviceInfo.GetUserDefinedName()} camera")
 
         line_in = settings.get('lineIN', None)
         if line_in is None:

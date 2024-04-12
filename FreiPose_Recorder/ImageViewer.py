@@ -293,7 +293,11 @@ class CameraSettingsTab(QWidget):
 
     def parent_gain_exposure(self):
         self.parent.parent().set_gain_exposure()  #because of the promoted parent widget
-    def parent_color_mode(self, color_mode:str):
+
+    def parent_color_mode(self, color_mode: str):
+        """
+        Set the color mode of the camera, as callback to changes in UI
+        """
         self.parent.parent().set_color_mode(color_mode)
 
     def ConnectSignals(self):
