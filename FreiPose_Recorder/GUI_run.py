@@ -29,18 +29,17 @@ log = logging.getLogger('main')
 log.setLevel(logging.DEBUG)
 
 #make the logging to file
+log_path = Path('logs')
+log_path.mkdir(exist_ok=True)
 if LOG2FILE:
-    logging.basicConfig(filename=f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w',
+    logging.basicConfig(filename=log_path / f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w',
                         format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.4.6"
-
+VERSION = "0.5.0"
 
 # TODO
 # move camera enums somewhere less convoluted
-# get logger running into file
-# move LineIn setting to the per camera parameter file
-# add Bayesmodes as color options
+
 # add a way to display/save color videos correctly when using RGB, BGR or Bayes modes
 # update to pypylon 3 ?
 # there is now https://docs.baslerweb.com/pylonapi/cpp/class_pylon_1_1_c_image_format_converter#variable-maxnumthreads build in!
@@ -161,81 +160,7 @@ class BASLER_GUI(QMainWindow):
         except FileNotFoundError:
             self.log.warning('No default settings file found')
 
-    def run_cams(self):
-        self.stop_event = Event()
-        self.basler_recorder.fps = self.FrameRateSpin.value()
-        self.number_cams = self.basler_recorder.cam_array.GetSize()
-        use_hw_trigger = self.HWTrig_checkBox.isChecked()
-        self.basler_recorder.run_multi_cam_show(self.stop_event, use_hw_trigger)
 
-        self.multi_view_timer = QTimer()
-        self.multi_view_timer.timeout.connect(self.update_multi_view)
-        self.multi_view_timer.start(10)  # make depending on frame rate ..? this should be enough for 100 fps ?
-        # self.singleview_thread = Thread(target = self.update_single_view)
-        # self.singleview_thread.start()
-        self.STOPButton.setEnabled(True)
-        self.RUNButton.setEnabled(False)
-        self.RECButton.setEnabled(False)
-        self.ShowSingleCamButton.setEnabled(False)
-        self.FrameRateSpin.setEnabled(False)  # or implement on the go change of the framerate...
-        self.Rec_status.setPixmap(QtGui.QIcon("GUI/icons/VideoCamera.svg").pixmap(64))
-        # change the pixmap color to green
-        self.Rec_status.setStyleSheet("background-color: rgb(0, 255, 0);")
-        for color_mode in self.CameraSettings.color_mode_list:
-            color_mode.setEnabled(False)
-
-        self.rec_start_time = time.monotonic()
-        # create a time that executes the trigger after 500 ms delay to make sure cameras are ready
-        if self.trigger and use_hw_trigger:
-            self.trigger.fps = self.FrameRateSpin.value()
-            self.trigger_timer = QTimer()
-            self.trigger_timer.setSingleShot(True)
-            self.trigger_timer.timeout.connect(self.trigger.start)
-            self.trigger_timer.start(500)
-
-    def update_rec_timer(self):
-        current_run_time = time.monotonic() - self.rec_start_time
-        if current_run_time >= 60:
-            self.recording_duration_label.setText(f"{(current_run_time // 60):.0f}m:{(current_run_time % 60):2.0f}s")
-        else:
-            self.recording_duration_label.setText(f"{current_run_time:.0f}s")
-
-    def update_multi_view(self):
-        # call this from a thread ? or maybe not
-        self.timer_update_counter += 1
-        if self.timer_update_counter >= 10:
-            self.update_rec_timer()  # dont call this too often ?
-            self.timer_update_counter = 0
-        try:
-            #t0 = time.monotonic()
-            for c_id in range(self.number_cams):
-                curr_image = self.basler_recorder.multi_view_queue[c_id].get_nowait()
-                if self.DisableViz_checkBox.isChecked():
-                    continue  # return fast
-                else:
-                    self.MultiViewWidget.cam_viewers[c_id].updateView(curr_image)
-            # self.log.debug(f"Nr elements in q {self.basler_recorder.single_view_queue.qsize()}")
-            # t0 = time.monotonic()
-            # stitched_image = StitchedImage(image_list).image
-            # print(f'It took {(time.monotonic() - t0):0.3f} s to put all images up')
-        except Empty:
-            return
-
-        writerstatus = f"\tVideoWriter {self.basler_recorder.video_writer_list[0].get_state()}" if len(
-            self.basler_recorder.video_writer_list) >= 1 else "not recording"
-
-        display_string = ""
-        for i in range(len(self.basler_recorder.multi_view_queue)):
-            display_string += f"Q{i}: {self.basler_recorder.multi_view_queue[i].qsize()}"
-        display_string += f"{writerstatus}"
-
-        self.statusbar.showMessage(display_string)
-        # self.ViewWidget.updateView(currentImg)
-        # self.ViewWidget.updateView(stitched_image)
-
-        if not self.basler_recorder.is_recording and not self.basler_recorder.is_viewing:
-            self.log.error('Basler recording stopped internally')
-            self.socket_comm.send_json_message(SocketMessage.respond_recording_fail)
 
     def start_recording(self):
         self.files_copied = False
@@ -375,7 +300,8 @@ class BASLER_GUI(QMainWindow):
 
         self.single_view_timer = QTimer()
         self.single_view_timer.timeout.connect(self.update_single_view)
-        self.single_view_timer.start(10)  # TODO make dependign on frame rate ..
+
+        self.single_view_timer.start(int(1000//(self.FrameRateSpin.value()*1.2)))
         # self.singleview_thread = Thread(target = self.update_single_view)
         # self.singleview_thread.start()
         self.STOPButton.setEnabled(True)
@@ -387,6 +313,11 @@ class BASLER_GUI(QMainWindow):
         """
         Updates the single view widget with the current image in the queue
         """
+        # stop the whole process if an error occured at basler recorder side
+        if self.basler_recorder.error_event.isSet():  # if an error occured
+            self.log.error('Error in Basler recorder')
+            self.stop_cams()
+            return
         try:
             currentImg = self.basler_recorder.single_view_queue.get_nowait()
             # self.log.debug(f"Nr elements in q {self.basler_recorder.single_view_queue.qsize()}")
@@ -395,9 +326,84 @@ class BASLER_GUI(QMainWindow):
             return
         # self.ViewWidget.updateView(currentImg)
         self.single_camviewer.updateView(currentImg)
-        # TODO stop the whole process if an error occured at basler recorder side
 
-    #### SETTIGNS ###
+    def show_multiple_cam(self):
+        self.stop_event = Event()
+        self.basler_recorder.fps = self.FrameRateSpin.value()
+        self.number_cams = self.basler_recorder.cam_array.GetSize()
+        use_hw_trigger = self.HWTrig_checkBox.isChecked()
+        self.basler_recorder.run_multi_cam_show(self.stop_event, use_hw_trigger)
+
+        self.multi_view_timer = QTimer()
+        self.multi_view_timer.timeout.connect(self.update_multi_view)
+        self.multi_view_timer.start(int(1000 // (self.FrameRateSpin.value() * 1.2)))
+
+        self.STOPButton.setEnabled(True)
+        self.RUNButton.setEnabled(False)
+        self.RECButton.setEnabled(False)
+        self.ShowSingleCamButton.setEnabled(False)
+        self.FrameRateSpin.setEnabled(False)  # or implement on the go change of the framerate...
+        self.Rec_status.setPixmap(QtGui.QIcon("GUI/icons/VideoCamera.svg").pixmap(64))
+        # change the pixmap color to green
+        self.Rec_status.setStyleSheet("background-color: rgb(0, 255, 0);")
+        for color_mode in self.CameraSettings.color_mode_list:
+            color_mode.setEnabled(False)
+
+        self.rec_start_time = time.monotonic()
+        # create a time that executes the trigger after 500 ms delay to make sure cameras are ready
+        if self.trigger and use_hw_trigger:
+            self.trigger.fps = self.FrameRateSpin.value()
+            self.trigger_timer = QTimer()
+            self.trigger_timer.setSingleShot(True)
+            self.trigger_timer.timeout.connect(self.trigger.start)
+            self.trigger_timer.start(500)
+
+    def update_multi_view(self):
+        # call this from a thread ? or maybe not
+        if self.basler_recorder.error_event.isSet():  # if an error occured
+            self.log.error('Error in Basler recorder')
+            self.stop_cams()
+            self.socket_comm.send_json_message(SocketMessage.respond_recording_fail)
+            return
+
+        self.timer_update_counter += 1
+        if self.timer_update_counter >= 20:
+            self.update_rec_timer()  # dont call this too often ?
+            self.timer_update_counter = 0
+        try:
+            for c_id in range(self.number_cams):
+                curr_image = self.basler_recorder.multi_view_queue[c_id].get_nowait()
+                if self.DisableViz_checkBox.isChecked():
+                    continue  # return fast
+                else:
+                    self.MultiViewWidget.cam_viewers[c_id].updateView(curr_image)
+        except Empty:
+            return
+
+        writerstatus = f"\tVideoWriter {self.basler_recorder.video_writer_list[0].get_state()}" if len(
+            self.basler_recorder.video_writer_list) >= 1 else "not recording"
+
+        display_string = ""
+        for i in range(len(self.basler_recorder.multi_view_queue)):
+            display_string += f"Q{i}: {self.basler_recorder.multi_view_queue[i].qsize()}"
+        display_string += f"{writerstatus}"
+
+        self.statusbar.showMessage(display_string)
+        # self.ViewWidget.updateView(currentImg)
+        # self.ViewWidget.updateView(stitched_image)
+
+        if not self.basler_recorder.is_recording and not self.basler_recorder.is_viewing:
+            self.log.error('Basler recording stopped internally')
+            self.socket_comm.send_json_message(SocketMessage.respond_recording_fail)
+
+    def update_rec_timer(self):
+        current_run_time = time.monotonic() - self.rec_start_time
+        if current_run_time >= 60:
+            self.recording_duration_label.setText(f"{(current_run_time // 60):.0f}m:{(current_run_time % 60):2.0f}s")
+        else:
+            self.recording_duration_label.setText(f"{current_run_time:.0f}s")
+
+    #### SETTINGS ###
     def save_settings(self):
         """
         Save current camera settings to a json file
@@ -564,7 +570,7 @@ class BASLER_GUI(QMainWindow):
     def ConnectSignals(self):
         self.ScanDevButton.clicked.connect(self.scan_cams)
         self.ConnectButton.clicked.connect(self.connect_to_cams)
-        self.RUNButton.clicked.connect(self.run_cams)
+        self.RUNButton.clicked.connect(self.show_multiple_cam)
         self.RECButton.clicked.connect(self.start_recording)
         self.STOPButton.clicked.connect(self.stop_cams)
 
@@ -694,7 +700,7 @@ class BASLER_GUI(QMainWindow):
 
                 elif message['type'] == MessageType.start_video_view.value:
                     self.log.info("got message to start viewing")
-                    self.run_cams()
+                    self.show_multiple_cam()
                     self.socket_comm.send_json_message(SocketMessage.respond_viewing)
 
                 elif message['type'] == MessageType.start_video_calibrec.value:
