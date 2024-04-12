@@ -36,7 +36,7 @@ class MyImageEventHandler(pylon.ImageEventHandler):
 
 import os
 
-NUM_CAMERAS = 4  # simulated cameras
+NUM_CAMERAS = 2  # simulated cameras
 # setup demo environment with emulated cameras
 os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
 
@@ -706,7 +706,8 @@ class Recorder(object):
         cam = self.current_cam
         converter = pylon.ImageFormatConverter()
         converter.OutputPixelFormat = pylon.PixelType_RGB8packed
-        converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+        converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned  # most significant bit first #
+        # LsbAligned other option
 
         cam.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
 
@@ -780,13 +781,25 @@ class Recorder(object):
         self.is_viewing = False
 
     def multi_cam_show(self):
+        converter = pylon.ImageFormatConverter()
+        converter.OutputPixelFormat = pylon.PixelType_RGB8packed
+        converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned  # most significant bit first #
+        # will i need an array of converters ?
+
         self.cam_array.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
         while not self.stop_event.isSet():
             try:
                 grabResult = self.cam_array.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
                 context_id = self.cams_context[grabResult.GetCameraContext()]
                 if grabResult.GrabSucceeded():
-                    img = grabResult.GetArray()
+                    if converter.ImageHasDestinationFormat(grabResult):
+                        # no conversion required
+                        img = grabResult.GetArray()
+                    else:
+                        # convert to RGB
+                        targetImage = converter.Convert(grabResult)
+                        img = targetImage.GetArray()
+                    #img = grabResult.GetArray()
                     # context_id = self.cams_context[grabResult.GetCameraContext()]
                     self.multi_view_queue[context_id].put_nowait(img)
                     grabResult.Release()

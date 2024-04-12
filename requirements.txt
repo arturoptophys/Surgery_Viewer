@@ -1,7 +1,7 @@
 numpy
 pyqtgraph
 pyqt6
-pypylon == 1.9.0
+pypylon == 3.0.1
 opencv-python
 vidgear[core]
 pyserial
