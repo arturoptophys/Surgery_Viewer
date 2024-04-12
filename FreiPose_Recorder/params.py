@@ -11,3 +11,4 @@ TRIGGER_LINE_IN = "Line3"   # Input-line on the GPIO cable for the camera for th
 TRIGGER_LINE_OUT = "Line1"  # Outputline for the camera
 MAX_FPS = 150    # maximum fps for the camera
 codec_to_try = ["h264_nvenc", "libx264", "mpeg4", "mpeg2video", "libxvid", "libx264rgb"]
+LOG2FILE = True  # Boolean to log to a file

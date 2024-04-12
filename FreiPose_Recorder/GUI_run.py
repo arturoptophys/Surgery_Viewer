@@ -43,6 +43,7 @@ VERSION = "0.4.6"
 # add Bayesmodes as color options
 # add a way to display/save color videos correctly when using RGB, BGR or Bayes modes
 # update to pypylon 3 ?
+# there is now https://docs.baslerweb.com/pylonapi/cpp/class_pylon_1_1_c_image_format_converter#variable-maxnumthreads build in!
 
 class BASLER_GUI(QMainWindow):
     def __init__(self):
@@ -374,7 +375,7 @@ class BASLER_GUI(QMainWindow):
 
         self.single_view_timer = QTimer()
         self.single_view_timer.timeout.connect(self.update_single_view)
-        self.single_view_timer.start(10)  # dependign on frame rate ..
+        self.single_view_timer.start(10)  # TODO make dependign on frame rate ..
         # self.singleview_thread = Thread(target = self.update_single_view)
         # self.singleview_thread.start()
         self.STOPButton.setEnabled(True)
@@ -389,11 +390,12 @@ class BASLER_GUI(QMainWindow):
         try:
             currentImg = self.basler_recorder.single_view_queue.get_nowait()
             # self.log.debug(f"Nr elements in q {self.basler_recorder.single_view_queue.qsize()}")
-            self.statusbar.showMessage(f"In Q :{self.basler_recorder.single_view_queue.qsize()}")
+            self.statusbar.showMessage(f"In Q for {self.basler_recorder.current_cam_name} :{self.basler_recorder.single_view_queue.qsize()}")
         except Empty:  # if queue is empty just return
             return
         # self.ViewWidget.updateView(currentImg)
         self.single_camviewer.updateView(currentImg)
+        # TODO stop the whole process if an error occured at basler recorder side
 
     #### SETTIGNS ###
     def save_settings(self):
@@ -434,7 +436,7 @@ class BASLER_GUI(QMainWindow):
         Load camera settings from a json file
         """
         if not self.basler_recorder.cams_connected:
-            self.log.info('Not connected to cameras cant load settings')
+            self.log.warning('Not connected to cameras cant load settings')
 
             QMessageBox.information(self,
                                     "Info",
@@ -463,23 +465,23 @@ class BASLER_GUI(QMainWindow):
             self.basler_recorder.set_cam_settings(cam, settings)
             self.CameraSettings.exposure_spin_list[c_id].blockSignals(True)
             self.CameraSettings.gain_spin_list[c_id].blockSignals(True)
+            self.CameraSettings.color_mode_list[c_id].blockSignals(True)
             self.CameraSettings.exposure_spin_list[c_id].setValue(settings['exp_time'])
             self.CameraSettings.gain_spin_list[c_id].setValue(settings['gain'])
             self.CameraSettings.color_mode_list[c_id].setCurrentText(settings['color_mode'])
             self.CameraSettings.exposure_spin_list[c_id].blockSignals(False)
             self.CameraSettings.gain_spin_list[c_id].blockSignals(False)
+            self.CameraSettings.color_mode_list[c_id].blockSignals(False)
 
-            #TODO set values in the GUI !
-
-            #self.CameraSettings.exposure_spin_list[]
         try:
             self.HWTrig_checkBox.setChecked(cam_lib['HW_trigg'])
             self.crf_spinBox.setValue(cam_lib['crf'])
             self.Codec_comboBox.setCurrentText(cam_lib['codec'])
             self.FrameRateSpin.setValue(cam_lib['fps'])
-            self.basler_recorder.save_path = cam_lib['save_path']
+            self.set_save_path(cam_lib['save_path'])
+            #self.basler_recorder.save_path = cam_lib['save_path']
         except KeyError:
-            self.log.info('No general settings found in file')
+            self.log.info('No-full general settings found in file')
 
     def set_save_path(self, save_path: (str, Path, None) = None):
         """
@@ -538,7 +540,8 @@ class BASLER_GUI(QMainWindow):
         self.basler_recorder.set_gain_exposure(current_camid, gain, exp_time)
 
     def set_color_mode(self, color_mode: str):
-        """set the gain and exposure time for the current camera"""
+        """set the colormode for the current camera"""
+        #APPArently this is not called anywhere
         current_camid = self.get_current_tab()
         self.basler_recorder.set_color_mode(current_camid, color_mode)
         # exp_time = self.CameraSettings.exposure_spin_list[current_camid]
