@@ -33,10 +33,14 @@ class MyImageEventHandler(pylon.ImageEventHandler):
     def OnImageGrabbed(self, camera, grabResult):
         print("CSampleImageEventHandler::OnImageGrabbed called.")
 
+
 import os
+
 NUM_CAMERAS = 4  # simulated cameras
 # setup demo environment with emulated cameras
 os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
+
+
 # remove when not needed anymore
 
 
@@ -49,6 +53,7 @@ def rel_close(v, max_v, thresh=5.0):
 
 class Recorder(object):
     """Class to handle recording of multiple cameras"""
+
     def __init__(self, verbosity=0, write_timestamps=False):
         self.write_timestamps = write_timestamps
         self.codec = 'divx'
@@ -60,6 +65,7 @@ class Recorder(object):
         self.multi_view_queue = None
         self.stop_event = None
         self.current_cam = None
+        self.current_cam_name = ''
         self.single_view_thread = None
         self.single_view_queue = None
         self.multi_view_thread = None
@@ -88,7 +94,7 @@ class Recorder(object):
     @fps.setter
     def fps(self, fps_new):
         if fps_new < 1:
-            self.__fps = 1
+            self._fps = 1
         elif fps_new > MAX_FPS:
             self._fps = MAX_FPS
         else:
@@ -150,62 +156,53 @@ class Recorder(object):
         self.cams_connected = False
 
     def _config_cams_continuous(self, cam):
-        # cam.RegisterImageEventHandler(MyImageEventHandler(),
-        #                               pylon.RegistrationMode_Append,
-        #                               pylon.Cleanup_Delete)
-
         if not cam.IsOpen():
             cam.Open()
 
         # some things are to be set as attributes ...
         try:
-            cam.AcquisitionFrameRate = self.fps  # here we go to max fps in order to not be limited
+            cam.AcquisitionFrameRate.Value = self.fps  # set fps to desired value
         except genicam.LogicalErrorException:
-            cam.AcquisitionFrameRateAbs = self.fps
+            cam.AcquisitionFrameRateAbs.Value = self.fps
 
-        cam.AcquisitionFrameRateEnable = True
+        cam.AcquisitionFrameRateEnable.Value = True
 
         cam.MaxNumBuffer.SetValue(1024)  # how many buffers there are in total (empty and full)
         cam.OutputQueueSize.SetValue(
             512)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
 
-        cam.AcquisitionMode = 'Continuous'
-        cam.TriggerMode = 'Off'
-
-        # nodemap.GetNode("PixelFormat").FromString("BGR8")
-        # cam.DemosaicingMode.SetValue('BaslerPGI')
-        # cam.PixelFormat = 'Mono8'
+        cam.AcquisitionMode.Value = 'Continuous'
+        cam.TriggerMode.Value = 'Off'
 
     def _config_cams_hw_trigger(self, cam):
-        # cam.RegisterImageEventHandler(MyImageEventHandler(),
-        #                               pylon.RegistrationMode_Append,
-        #                               pylon.Cleanup_Delete)
         if not cam.IsOpen():
             cam.Open()
         try:
-            cam.AcquisitionFrameRate = 200  # here we go to max fps in order to not be limited
+            cam.AcquisitionFrameRate.Value = MAX_FPS  # here we go to max fps in order to not be limited
         except genicam.LogicalErrorException:
-            cam.AcquisitionFrameRateAbs = 200  # maybe basler 2 cameras ?
-        cam.AcquisitionFrameRateEnable = True  # should this be False ? 
+            cam.AcquisitionFrameRateAbs.Value = MAX_FPS  # maybe basler 2 cameras ?
+        cam.AcquisitionFrameRateEnable.Value = True  # TODO should this be False ?
         # behavior wrt to these values is a bit strange to me. Important seems to be to use LastImages Strategy and make MaxNumBuffers larger than OutputQueueSize. Otherwise its not guaranteed to work
         cam.MaxNumBuffer.SetValue(1024)  # how many buffers there are in total (empty and full)
         cam.OutputQueueSize.SetValue(
             512)  # maximal number of filled buffers (if another image is retrieved it replaces an old one and is called skipped)
 
-        cam.AcquisitionMode = 'Continuous'
+        cam.AcquisitionMode.Value = 'Continuous'
         # cam.PixelFormat.SetValue("BGR8")
         # cam.DemosaicingMode.SetValue('BaslerPGI')
         #  cam.PixelFormat = 'Mono8'
 
-        cam.LineSelector = TRIGGER_LINE_IN
-        cam.LineMode = "Input"
+        #todo move this to camera config? only leave triggermode on ?
+        cam.LineSelector.Value = TRIGGER_LINE_IN
+        cam.LineMode.Value = "Input"
         #cam.LineSelector = TRIGGER_LINE_OUT
         #cam.LineMode = "Output"
         # cam.LineSource = pylon. # set to exposureactive
-        cam.TriggerSelector = "FrameStart"
-        cam.TriggerSource = TRIGGER_LINE_IN
-        cam.TriggerMode = "On"
-        cam.TriggerActivation = 'RisingEdge'
+        cam.TriggerSelector.Value = "FrameStart"
+        cam.TriggerSource.Value = TRIGGER_LINE_IN
+
+        cam.TriggerMode.Value = "On"
+        cam.TriggerActivation.Value = 'RisingEdge'
 
     @staticmethod
     def is_color_cam(cam):
@@ -217,9 +214,8 @@ class Recorder(object):
             return True
         return False
 
-    # functions setting the color mode of the camera
     def set_color_mode(self, cam_id: int, color_mode: str):
-        """ Set values from GUI"""
+        """ Set values for the color mode of the camera from GUI"""
         was_closed = False
         cam = self.cam_array[cam_id]
         if not cam.IsOpen():
@@ -274,18 +270,21 @@ class Recorder(object):
             self.log.info(f"{CameraIdentificationSN(cam.DeviceInfo.GetSerialNumber()).name} is not a color cam\n"
                           f"Skipping white balancing")
             return
+        try:
+            cam.AutoFunctionROISelector.SetValue('ROI1')
+            cam.AutoFunctionROIUseWhiteBalance.SetValue(False)
+            cam.AutoFunctionROISelector.SetValue('ROI2')
+            cam.AutoFunctionROIUseWhiteBalance.SetValue(True)
 
-        cam.AutoFunctionROISelector.SetValue('ROI1')
-        cam.AutoFunctionROIUseWhiteBalance.SetValue(False)
-        cam.AutoFunctionROISelector.SetValue('ROI2')
-        cam.AutoFunctionROIUseWhiteBalance.SetValue(True)
-
-        # define ROI to use
-        cam.AutoFunctionROISelector.SetValue('ROI2')
-        cam.AutoFunctionROIWidth.SetValue(cam.Width.GetValue())
-        cam.AutoFunctionROIHeight.SetValue(cam.Height.GetValue())
-        cam.AutoFunctionROIOffsetX.SetValue(0)
-        cam.AutoFunctionROIOffsetY.SetValue(0)
+            # define ROI to use
+            cam.AutoFunctionROISelector.SetValue('ROI2')
+            cam.AutoFunctionROIWidth.SetValue(cam.Width.GetValue())
+            cam.AutoFunctionROIHeight.SetValue(cam.Height.GetValue())
+            cam.AutoFunctionROIOffsetX.SetValue(0)
+            cam.AutoFunctionROIOffsetY.SetValue(0)
+        except genicam.LogicalErrorException:
+            self.log.info('White balance setting is not available for this camera')
+            return
 
         # get initial values
         if self._verbosity > 1:
@@ -335,11 +334,14 @@ class Recorder(object):
 
         self.log.info(f"Setting auto exposure for {CameraIdentificationSN(cam.GetDeviceInfo().GetSerialNumber()).name} "
                       f"{cam.GetDeviceInfo().GetSerialNumber()}")
-
-        cam.AutoFunctionROISelector.SetValue('ROI1')
-        cam.AutoFunctionROIUseBrightness.SetValue(True)
-        cam.AutoFunctionROISelector.SetValue('ROI2')
-        cam.AutoFunctionROIUseBrightness.SetValue(False)
+        try:
+            cam.AutoFunctionROISelector.SetValue('ROI1')
+            cam.AutoFunctionROIUseBrightness.SetValue(True)
+            cam.AutoFunctionROISelector.SetValue('ROI2')
+            cam.AutoFunctionROIUseBrightness.SetValue(False)
+        except genicam.LogicalErrorException:
+            self.log.info('Auto exposure setting is not available for this camera')
+            return 0
 
         # define ROI to use
         cam.AutoFunctionROISelector.SetValue('ROI1')
@@ -395,139 +397,6 @@ class Recorder(object):
             cam.Close()
         return exposure_time
 
-    @staticmethod
-    def get_cam_exposureTime(cam: pylon.InstantCamera) -> float:
-        """Wrapper to ge exposure time.. in some cameras has different node"""
-        try:
-            return cam.ExposureTime.GetValue()
-        except genicam.LogicalErrorException:
-            return cam.ExposureTimeAbs.GetValue()
-
-    @staticmethod
-    def get_cam_gain(cam: pylon.InstantCamera) -> float:
-        """Wrapper to get gain.. some cameras might not have the option"""
-        try:
-            return cam.Gain.GetValue()
-        except genicam.LogicalErrorException:
-            return 0
-
-    @staticmethod
-    def get_cam_limits(cam: pylon.InstantCamera) -> [tuple, tuple, list]:
-        try:
-            gain_limits = (cam.Gain.GetMin(), cam.Gain.GetMax())
-            exp_limits = (cam.ExposureTime.GetMin(), cam.ExposureTime.GetMax())
-            color_modes = cam.PixelFormat.Symbolics
-            return gain_limits, exp_limits, color_modes
-        except genicam.LogicalErrorException:
-            return [], [], []
-
-    @classmethod
-    def set_cam_settings(cls, cam: pylon.InstantCamera, settings: dict):
-        was_closed = False
-        if not cam.IsOpen():
-            was_closed = True
-            cam.Open()
-
-        try:
-            gain = settings['gain']
-            cam.Gain.SetValue(gain)
-        except genicam.OutOfRangeException:
-            print(f'Value{gain:0.0f} is out of range of gain for this camera')
-        except genicam.LogicalErrorException:
-            pass  # Not implemented for this camera
-        except KeyError:
-            pass
-
-        try:
-            exp_time = settings['exp_time']
-            cam.ExposureTime.SetValue(exp_time)
-        except KeyError:
-            pass
-        except genicam.OutOfRangeException:
-            print(f'Value{exp_time:0.0f} is out of range of the exposure time')
-        except genicam.LogicalErrorException:
-            try:
-                cam.ExposureTimeAbs.SetValue(exp_time)
-            except genicam.LogicalErrorException:
-                pass  # Not implemented for this camera 
-
-        try:
-            flipX = settings['flipX']
-            cam.ReverseX.SetValue(flipX)
-        except genicam.LogicalErrorException:
-            pass  # Not implemented for this camera
-        except KeyError:
-            pass  # not in settings
-
-        try:
-            flipY = settings['flipY']
-            cam.ReverseX.SetValue(flipY)
-        except genicam.LogicalErrorException:
-            pass  # Not implemented for this camera
-        except KeyError:
-            pass  # not in settings
-
-        try:
-            red_balance, green_balance, blue_balance = settings['color_balance']
-            cam.BalanceRatioSelector.SetValue('Red')
-            cam.BalanceRatio.SetValue(red_balance)
-            cam.BalanceRatioSelector.SetValue('Green')
-            cam.BalanceRatio.SetValue(green_balance)
-            cam.BalanceRatioSelector.SetValue('Blue')
-            cam.BalanceRatio.SetValue(blue_balance)
-        except genicam.LogicalErrorException:
-            pass  # Not implemented for this camera
-        except KeyError:
-            pass  # not in settings
-
-        if was_closed:
-            cam.Close()
-
-    @classmethod
-    def get_cam_settings(cls, cam: pylon.InstantCamera) -> dict:
-        was_closed = False
-        if not cam.IsOpen():
-            was_closed = True
-            cam.Open()
-
-        cam_settings = {}
-        cam_name = cam.DeviceInfo.GetUserDefinedName()
-        cam_settings[cam_name] = {}
-
-        gain = cls.get_cam_gain(cam)
-        exp_time = cls.get_cam_exposureTime(cam)
-        cam_settings[cam_name]['gain'] = gain
-        cam_settings[cam_name]['exp_time'] = exp_time
-        try:
-            flipX = cam.ReverseX.GetValue()
-            flipY = cam.ReverseY.GetValue()
-            cam_settings[cam_name]['flipX'] = flipX
-            cam_settings[cam_name]['flipY'] = flipY
-        except genicam.LogicalErrorException:
-            pass  # Not implemented for this camera
-
-        try:
-            if cls.is_color_cam(cam):
-                cam.BalanceRatioSelector.SetValue('Red')
-                red_balance = cam.BalanceRatio.GetValue()
-                cam.BalanceRatioSelector.SetValue('Green')
-                green_balance = cam.BalanceRatio.GetValue()
-                cam.BalanceRatioSelector.SetValue('Blue')
-                blue_balance = cam.BalanceRatio.GetValue()
-                cam_settings[cam_name]['color_balance'] = (red_balance, green_balance, blue_balance)
-        except genicam.LogicalErrorException:
-            pass  # Not implemented for this camera
-
-        try:
-            color_mode = cam.PixelFormat.GetValue()
-            cam_settings[cam_name]['color_mode'] = color_mode
-        except genicam.LogicalErrorException:
-            pass  # Not implemented for this camera
-
-        if was_closed:
-            cam.Close()
-        return cam_settings
-
     def run_auto_gain(self, cam_id) -> float:
         # check if this can be run while visualization is running ?
         # do a check if grabbing is already grabbing ?
@@ -544,11 +413,14 @@ class Recorder(object):
                       f"{cam.GetDeviceInfo().GetSerialNumber()}")
 
         # no clue whether those are needed / or work
-
-        cam.AutoFunctionROISelector.SetValue('ROI1')
-        cam.AutoFunctionROIUseBrightness.SetValue(True)
-        cam.AutoFunctionROISelector.SetValue('ROI2')
-        cam.AutoFunctionROIUseBrightness.SetValue(False)
+        try:
+            cam.AutoFunctionROISelector.SetValue('ROI1')
+            cam.AutoFunctionROIUseBrightness.SetValue(True)
+            cam.AutoFunctionROISelector.SetValue('ROI2')
+            cam.AutoFunctionROIUseBrightness.SetValue(False)
+        except genicam.LogicalErrorException:
+            self.log.info('Auto gain setting is not available for this camera')
+            return 0
 
         # define ROI to use
         cam.AutoFunctionROISelector.SetValue('ROI1')
@@ -605,43 +477,213 @@ class Recorder(object):
             cam.Close()
         return gain
 
+    @staticmethod
+    def get_cam_exposureTime(cam: pylon.InstantCamera) -> float:
+        """Wrapper to ge exposure time.. in some cameras has different node"""
+        try:
+            return cam.ExposureTime.GetValue()
+        except genicam.LogicalErrorException:
+            return cam.ExposureTimeAbs.GetValue()
+
+    @staticmethod
+    def set_cam_exposureTime(cam: pylon.InstantCamera, exp_time: [float, None]):
+        """Wrapper to set exposure time, in some cameras has different node"""
+        if exp_time is None:
+            return
+        try:
+            cam.ExposureTime.SetValue(exp_time)
+        except genicam.OutOfRangeException:
+            print(f'Value{exp_time:0.0f} is out of range of the exposure time')
+            try:
+                cam.ExposureTimeAbs.SetValue(exp_time)
+            except genicam.LogicalErrorException:
+                pass  # Not implemented for this camera
+
+    @staticmethod
+    def get_cam_gain(cam: pylon.InstantCamera) -> float:
+        """Wrapper to get gain.. some cameras might not have the option"""
+        try:
+            return cam.Gain.GetValue()
+        except genicam.LogicalErrorException:
+            return 0
+
+    @staticmethod
+    def get_cam_limits(cam: pylon.InstantCamera) -> [tuple, tuple, list]:
+        try:
+            gain_limits = (cam.Gain.GetMin(), cam.Gain.GetMax())
+            exp_limits = (cam.ExposureTime.GetMin(), cam.ExposureTime.GetMax())
+            color_modes = cam.PixelFormat.Symbolics
+            return gain_limits, exp_limits, color_modes
+        except genicam.LogicalErrorException:
+            return [], [], []
+
+    @classmethod
+    def set_cam_settings(cls, cam: pylon.InstantCamera, settings: dict):
+        was_closed = False
+        if not cam.IsOpen():
+            was_closed = True
+            cam.Open()
+
+        try:
+            gain = settings['gain']
+            cam.Gain.SetValue(gain)
+        except genicam.OutOfRangeException:
+            print(f'Value{gain:0.0f} is out of range of gain for this camera')
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+        except KeyError:
+            pass
+
+        cls.set_cam_exposureTime(cam, settings.get('exp_time', None))
+
+        try:
+            flipX = settings['flipX']
+            cam.ReverseX.SetValue(flipX)
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+        except KeyError:
+            pass  # not in settings
+
+        try:
+            flipY = settings['flipY']
+            cam.ReverseX.SetValue(flipY)
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+        except KeyError:
+            pass  # not in settings
+
+        try:
+            red_balance, green_balance, blue_balance = settings['color_balance']
+            cam.BalanceRatioSelector.SetValue('Red')
+            cam.BalanceRatio.SetValue(red_balance)
+            cam.BalanceRatioSelector.SetValue('Green')
+            cam.BalanceRatio.SetValue(green_balance)
+            cam.BalanceRatioSelector.SetValue('Blue')
+            cam.BalanceRatio.SetValue(blue_balance)
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+        except KeyError:
+            pass  # not in settings
+
+        try:
+            cam.PixelFormat.SetValue(settings['color_mode'])
+        except genicam.LogicalErrorException: # Not implemented for this camera
+            print('Could not set color mode')
+
+        line_in = settings.get('lineIN', None)
+        if line_in is None:
+            line_in = TRIGGER_LINE_IN
+        try:
+            cam.LineSelector.Value = line_in
+            cam.LineMode.Value = "Input"
+            cam.TriggerSelector.Value = "FrameStart"
+            cam.TriggerSource.Value = line_in
+        except genicam.LogicalErrorException:
+            print('Could not set trigger line')
+
+        line_out = settings.get('lineOUT', None)
+        if line_out:
+            cam.LineSelector.Value = line_out
+            cam.LineMode.Value = "Output"
+            # set to exposureactive
+            cam.LineSource.Value = "ExposureActive"
+
+        if was_closed:
+            cam.Close()
+
+    @classmethod
+    def get_cam_settings(cls, cam: pylon.InstantCamera) -> dict:
+        """
+        Get settings from a camera
+        :param cam: camera object
+        :return: dict with settings
+        """
+        was_closed = False
+        if not cam.IsOpen():
+            was_closed = True
+            cam.Open()
+
+        cam_settings = {}
+        cam_name = cam.DeviceInfo.GetUserDefinedName()
+        cam_settings[cam_name] = {}
+
+        cam_settings[cam_name]['gain'] = cls.get_cam_gain(cam)
+        cam_settings[cam_name]['exp_time'] = cls.get_cam_exposureTime(cam)
+
+        try:
+            cam_settings[cam_name]['flipX'] = cam.ReverseX.GetValue()
+            cam_settings[cam_name]['flipY'] = cam.ReverseY.GetValue()
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+
+        try:
+            if cls.is_color_cam(cam):
+                cam.BalanceRatioSelector.SetValue('Red')
+                red_balance = cam.BalanceRatio.GetValue()
+                cam.BalanceRatioSelector.SetValue('Green')
+                green_balance = cam.BalanceRatio.GetValue()
+                cam.BalanceRatioSelector.SetValue('Blue')
+                blue_balance = cam.BalanceRatio.GetValue()
+                cam_settings[cam_name]['color_balance'] = (red_balance, green_balance, blue_balance)
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+
+        try:
+            color_mode = cam.PixelFormat.GetValue()
+            cam_settings[cam_name]['color_mode'] = color_mode
+        except genicam.LogicalErrorException:
+            pass  # Not implemented for this camera
+
+        # if implemet savign and setting lines need to cycle trough all of them
+        #problem need to run trough all lines to get all settings
+
+        if was_closed:
+            cam.Close()
+        return cam_settings
+
     def flip_image_x(self, cam_id: int):
-        """  Flips the image in the X plane"""
+        """ Flips the image  of a single camera in the X plane """
         was_closed = False
         cam = self.cam_array[cam_id]
         if not cam.IsOpen():
             was_closed = True
             cam.Open()
-        cam.ReverseX = not cam.ReverseX.GetValue()  # switch value
+        cam.ReverseX.Value = cam.ReverseX.GetValue()  # switch value
         if was_closed:
             cam.Close()
 
     def flip_image_y(self, cam_id: int):
-        """  Flips the image in the Y plane"""
+        """ Flips the image of a single camera in the Y plane"""
         was_closed = False
         cam = self.cam_array[cam_id]
         if not cam.IsOpen():
             was_closed = True
             cam.Open()
-        cam.ReverseY = not cam.ReverseY.GetValue()  # switch value
+        cam.ReverseY.Value = not cam.ReverseY.GetValue()  # switch value
         if was_closed:
             cam.Close()
 
     def run_single_cam_show(self, cam_id: int, stop_event: Event):
-        was_closed = False
+        """
+        Show a single camera in a separate thread
+        :param cam_id: camera id
+        :param stop_event: Event to stop the thread
+        """
         cam = self.cam_array[cam_id]
-        self.single_view_queue = Queue(self.internal_queue_size)
+        self.single_view_queue = Queue(self.internal_queue_size) # QUEUE for transferring images between threads
         if not cam.IsOpen():
-            was_closed = True
             cam.Open()
         try:
             self.log.info(f'Showing device {CameraIdentificationSN(cam.GetDeviceInfo().GetSerialNumber()).name} '
                           f'with {self.fps} FPS')
+            self.current_cam_name = CameraIdentificationSN(cam.GetDeviceInfo().GetSerialNumber()).name
         except ValueError:
             self.log.info(f'Showing device {cam.GetDeviceInfo().GetSerialNumber()} with {self.fps} FPS')
+            self.current_cam_name = cam.GetDeviceInfo().GetSerialNumber()
 
         self._config_cams_continuous(cam)
         self.current_cam = cam
+
         self.stop_event = stop_event
 
         self.single_view_thread = Thread(target=self.single_cam_show)
@@ -650,47 +692,64 @@ class Recorder(object):
     def stop_single_cam_show(self):
         self.log.debug('Stopping single view, waiting for join')
         self.single_view_thread.join()  # wait for thread to finish
-        self.log.debug('thread joined')
+        self.log.debug('single view thread has joined')
         self.current_cam = None
         self.stop_event = None
         self.single_view_thread = None
-        # self.current_cam.StopGrabbing()  # just to be sure..
 
     def single_cam_show(self):
+        """
+        Get images from a single camera in a separate thread. Puts images to Q for visualization in GUI
+        """
         cam = self.current_cam
+        converter = pylon.ImageFormatConverter()
+        converter.OutputPixelFormat = pylon.PixelType_RGB8packed
+        converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+
         cam.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
 
         while not self.stop_event.isSet():
             try:
                 grabResult = cam.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
                 if grabResult.GrabSucceeded():
-                    img = grabResult.GetArray()
+                    #is this line needed ?
+                    targetImage = pylon.PylonImage.Create(pylon.PixelType_Mono8, grabResult.GetWidth(),
+                                                          grabResult.GetHeight())
+
+                    if converter.ImageHasDestinationFormat(grabResult):
+                        # no conversion required
+                        img = grabResult.GetArray()
+                    else:
+                        # convert to RGB
+                        targetImage = converter.Convert(grabResult)
+                        img = targetImage.GetArray()
+
                     self.single_view_queue.put_nowait(img)
                     grabResult.Release()
                 else:
                     self.log.error(f"Occured: {grabResult.ErrorCode} {grabResult.ErrorDescription}")
-                # if len(img.shape) == 2:
-                #    img = np.stack([img]*3, -1)
             except genicam.TimeoutException as e:
                 self.log.error(e)
                 break
             except Full:
                 self.log.error("Queue buffer overrun !")
                 break
+            except Exception as e:  # some other error occured
+                self.log.error(e)
+                break
         cam.StopGrabbing()
 
     def run_multi_cam_show(self, stop_event: Event, use_hw_trigger: bool = False):
-        was_closed = False
-        self.multi_view_queue = [Queue(self.internal_queue_size) for _ in range(self.cam_array.GetSize())]
+        #self.multi_view_queue = [Queue(self.internal_queue_size) for _ in range(self.cam_array.GetSize())]
+        self.multi_view_queue = [Queue(self.internal_queue_size)] * self.cam_array.GetSize()
 
         if not self.cam_array.IsOpen():
-            was_closed = True
             self.cam_array.Open()
 
         self.log.info(f'Showing {self.cam_array.GetSize()} cameras '
                       f'with {self.fps} FPS')
 
-        self.cams_context = {}
+        self.cams_context = {} # to identify from which camera the images arrive
         for c_id, cam in enumerate(self.cam_array):
             if use_hw_trigger:
                 self._config_cams_hw_trigger(cam)
@@ -708,12 +767,11 @@ class Recorder(object):
         if self.multi_view_thread:
             self.log.debug('Stopping multi-view, waiting for join')
             self.multi_view_thread.join()  # wait for thread to finish
-            self.log.debug('thread joined')
+            self.log.debug('multi-view thread joined')
         self.stop_event = None
         self.multi_view_thread = None
         self.cams_context = None
         self.is_viewing = False
-        # self.current_cam.StopGrabbing()  # just to be sure..
 
     def multi_cam_show(self):
         self.cam_array.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
@@ -728,13 +786,11 @@ class Recorder(object):
                     grabResult.Release()
                 else:
                     print("Error: ", grabResult.ErrorCode, grabResult.ErrorDescription)
-                # if len(img.shape) == 2:
-                #    img = np.stack([img]*3, -1)
             except genicam.TimeoutException as e:
                 self.log.error(e)
                 break
             except Full:
-                self.log.error(f"Queue buffer{context_id}overrun !")
+                self.log.error(f"Queue buffer for camera {context_id} overrun !")
                 break
         self.cam_array.StopGrabbing()
         self.is_viewing = False
@@ -742,7 +798,6 @@ class Recorder(object):
     def run_multi_cam_record(self, stop_event: Event, filename: str = 'testrec', use_hw_trigger: bool = False):
         was_closed = False
         self.multi_view_queue = [Queue(self.internal_queue_size) for _ in range(self.cam_array.GetSize())]
-
 
         # create path if not exists
         (Path(self.save_path)).mkdir(parents=True, exist_ok=True)
@@ -758,7 +813,7 @@ class Recorder(object):
         self.video_writer_list = list()
         try:
             timestamp = datetime.datetime.now().strftime(TIME_STAMP_STRING)
-        except (TypeError,ValueError):
+        except (TypeError, ValueError):
             timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
         # to make sure all have the same timestamp
@@ -853,6 +908,7 @@ class Recorder(object):
                 break
         self.cam_array.StopGrabbing()
         self.is_recording = False
+
 
 if __name__ == "__main__":
     baslerRec = Recorder()
