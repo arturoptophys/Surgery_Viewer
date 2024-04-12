@@ -64,6 +64,7 @@ class Recorder(object):
         self.multi_record_thread = None
         self.multi_view_queue = None
         self.stop_event = None
+        self.error_event = Event()  # event we set if an error occurs to signal the main thread
         self.current_cam = None
         self.current_cam_name = ''
         self.single_view_thread = None
@@ -685,7 +686,7 @@ class Recorder(object):
         self.current_cam = cam
 
         self.stop_event = stop_event
-
+        self.error_event.clear()
         self.single_view_thread = Thread(target=self.single_cam_show)
         self.single_view_thread.start()
 
@@ -694,6 +695,7 @@ class Recorder(object):
         self.single_view_thread.join()  # wait for thread to finish
         self.log.debug('single view thread has joined')
         self.current_cam = None
+        self.error_event.clear()
         self.stop_event = None
         self.single_view_thread = None
 
@@ -730,12 +732,15 @@ class Recorder(object):
                     self.log.error(f"Occured: {grabResult.ErrorCode} {grabResult.ErrorDescription}")
             except genicam.TimeoutException as e:
                 self.log.error(e)
+                self.error_event.set()
                 break
             except Full:
                 self.log.error("Queue buffer overrun !")
+                self.error_event.set()
                 break
             except Exception as e:  # some other error occured
                 self.log.error(e)
+                self.error_event.set()
                 break
         cam.StopGrabbing()
 
@@ -758,7 +763,7 @@ class Recorder(object):
             self.cams_context[cam.GetCameraContext()] = c_id
         # self.log.debug(print(self.cams_context))
         self.stop_event = stop_event
-
+        self.error_event.clear()
         self.multi_view_thread = Thread(target=self.multi_cam_show)
         self.multi_view_thread.start()
         self.is_viewing = True
@@ -769,6 +774,7 @@ class Recorder(object):
             self.multi_view_thread.join()  # wait for thread to finish
             self.log.debug('multi-view thread joined')
         self.stop_event = None
+        self.error_event.clear()
         self.multi_view_thread = None
         self.cams_context = None
         self.is_viewing = False
@@ -788,9 +794,11 @@ class Recorder(object):
                     print("Error: ", grabResult.ErrorCode, grabResult.ErrorDescription)
             except genicam.TimeoutException as e:
                 self.log.error(e)
+                self.error_event.set()
                 break
             except Full:
                 self.log.error(f"Queue buffer for camera {context_id} overrun !")
+                self.error_event.set()
                 break
         self.cam_array.StopGrabbing()
         self.is_viewing = False
@@ -832,7 +840,7 @@ class Recorder(object):
                                                           codec=self.codec))  # was DIVX
         # self.log.debug(print(self.cams_context))
         self.stop_event = stop_event
-
+        self.error_event.clear()
         self.multi_record_thread = Thread(target=self.multi_cam_record)
         self.multi_record_thread.start()
         self.is_recording = True
@@ -846,6 +854,7 @@ class Recorder(object):
             writer.stop()
         self.log.debug('writers finished')
         self.is_recording = False
+        self.error_event.clear()
         self.stop_event = None
         self.multi_record_thread = None
         self.cams_context = None
@@ -862,6 +871,7 @@ class Recorder(object):
                 if grabResult.GetNumberOfSkippedImages() > 0:
                     self.log.warning(f'Cam{context_id}: Missed {grabResult.GetNumberOfSkippedImages()} frames')
                 if grabResult.GrabSucceeded():
+                    # TODO implement color conversion
                     img = grabResult.GetArray()
                     img_nr_camera = grabResult.ID
                     img_nr = grabResult.ImageNumber
@@ -881,29 +891,16 @@ class Recorder(object):
                 else:
                     self.log.error(grabResult.ErrorCode, grabResult.ErrorDescription)
 
-                """"
-                #This needs to be called in visualization routine
-                # keep track of our speed                
-                video_writer_q_state[cid] = self.video_writer_list[cid].get_state()
-                if cam_last_poll[cid] > 0:
-                    if cam_polling_freq[cid] > 0:
-                        cam_polling_freq[cid] = 0.85 * cam_polling_freq[cid] + 0.15 * (
-                                    time.time() - cam_last_poll[cid])
-                    else:
-                        cam_polling_freq[cid] = time.time() - cam_last_poll[cid]
-                cam_last_poll[cid] = time.time()
-                num_frames[cid] += 1
-                """
-
             except genicam.TimeoutException as e:
                 self.log.error(e)
-                #TODO signal to GUI, somwthing went wrong and recording is aborted
-                # maybe set an event..
+                self.error_event.set()
                 break
             except Full:
                 self.log.error(f"Queue buffer{context_id}overrun !")
+                self.error_event.set()
                 break
             except QueueOverflow:
+                self.error_event.set()
                 self.log.error(f"Queue buffer{context_id}overrun !")
                 break
         self.cam_array.StopGrabbing()
