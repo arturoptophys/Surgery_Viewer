@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="FreiPose_Recorder",
-    version='0.10',
+    version='1.00',
     description='Tool to record videos using (multiple) Basler Cameras synchornoiusly',
     url='https://github.com/Optophys-Lab/FreiPose_Recorder',
     author='Artur',
@@ -11,7 +11,7 @@ setup(
     install_requires=["numpy",
                       "pyqt6",
                       "pyqtgraph",
-                      "pypylon == 1.9.0",
+                      "pypylon == 3.0.1",
                       "vidgear[core]",
                       "pyserial",
                       "opencv-python"]

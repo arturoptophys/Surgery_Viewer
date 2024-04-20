@@ -497,7 +497,7 @@ class BASLER_GUI(QMainWindow):
         Set the path where to save the recordings
         """
         if save_path is None or not save_path:
-            save_path = QFileDialog.getExistingDirectory(self, "Select Directory")
+            save_path = QFileDialog.getExistingDirectory(self, "Select Directory where videos should be saved")
         if save_path:
             self.basler_recorder.save_path = save_path
             self.log.debug(f'Save path set to {save_path}')

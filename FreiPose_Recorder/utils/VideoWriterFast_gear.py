@@ -62,7 +62,7 @@ class VideoWriterFast:
                 start = time.time()
                 # write to stream
                 try:
-                    self.stream.write(frame)
+                    self.stream.write(frame, rgb_mode=True)
                 except ValueError as e:
                     self.stopped = True
                     print("Error writing frame to stream: {}".format(e))
