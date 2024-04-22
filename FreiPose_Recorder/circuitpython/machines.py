@@ -8,6 +8,12 @@ from timing_utils import ticks_diff, ticks_less
 data_serial = usb_cdc.data
 
 MAX_FPS = 150  # maximum fps for the camera
+RED = (255, 0, 0)
+YELLOW = (255, 150, 0)
+GREEN = (0, 255, 0)
+CYAN = (0, 255, 255)
+BLUE = (0, 0, 255)
+PURPLE = (180, 0, 255)
 
 import time
 import rp2pio
@@ -195,6 +201,50 @@ class FPS_trigger:
             return None
 
 
+class LEDpixel:
+    def __init__(self, blink_freq=2):
+        try:
+            import neopixel
+            self.pixels = neopixel.NeoPixel(board.NEO, 1, auto_write=True)[0]
+            self.pixel_available = True
+        except:
+            self.pixel_available = False
+
+        self.is_blinking = False
+        self.blink_freq = blink_freq
+        self.blink_duration = int(1000 / self.blink_freq / 2) # blink duration in ms for 50 % duty cycle
+        self.last_t = 0
+
+    def indicate_connected(self):
+        if not self.pixel_available:
+            return
+        self.pixels.fill(GREEN)
+        self.pixels.brightness = 1
+
+    def indicate_recording(self):
+        if not self.pixel_available:
+            return
+        self.pixels.fill(RED)
+        self.pixels.brightness = 1
+        self.is_blinking = True
+        self.last_t = ticks_ms()
+
+    def turn_off(self):
+        """sets the brightness of the pixel to 0 to turn it off"""
+        if not self.pixel_available:
+            return
+        self.pixels.brightness = 0
+        self.is_blinking = False
+
+    def update(self):
+        if self.is_blinking and self.pixel_available:
+            if ticks_less(self.blink_duration, ticks_diff(ticks_ms(), self.last_t)):  # was on long enough
+                if self.pixels.brightness:
+                    self.pixels.brightness = 0
+                else:
+                    self.pixels.brightness = 1
+                self.last_t += self.blink_duration  # set time for next pulse event
+
 class Display:
     def __init__(self):
         import adafruit_character_lcd.character_lcd_i2c as character_lcd
@@ -233,6 +283,10 @@ class USBSerialReader:
 
     def __init__(self):
         self.s = ''
+        self.serial = data_serial
+
+    def check_serial(self) -> bool:
+        return self.serial.connected
 
     def read(self, end_char='\n', echo=True):
         n = data_serial.in_waiting
