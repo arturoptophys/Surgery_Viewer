@@ -455,7 +455,8 @@ class BASLER_GUI(QMainWindow):
         if self.basler_recorder.error_event.isSet():  # if an error occured
             self.log.error('Error in Basler recorder')
             self.stop_cams()
-            self.socket_comm.send_json_message(SocketMessage.respond_recording_fail)
+            if self.socket_comm:
+                self.socket_comm.send_json_message(SocketMessage.respond_recording_fail)
             return
 
         self.timer_update_counter += 1

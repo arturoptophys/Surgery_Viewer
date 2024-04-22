@@ -114,7 +114,6 @@ class SingleCamViewer(QDialog):
         self.log.setLevel(logging.DEBUG)
         self.parent = parent
         self.ConnectSignals()
-        self.previousBlur_value = None
         self.is_showing = True
 
     def ConnectSignals(self):
@@ -128,22 +127,6 @@ class SingleCamViewer(QDialog):
 
     def updateView(self, img):
         self.CamViewer.updateView(img)
-        if self.FocusCheckBox.isChecked():
-            t0 = time.monotonic()
-            self.calculate_blur(img)
-            print(f'Blur value calculation with sciimage took {(time.monotonic() - t0):0.4f}')
-
-    def calculate_blur(self, img):
-        # to do only in a roi ?
-        # blur_strength = int(100 - blur_effect(img) * 100)
-        img_shape = img.shape
-        roi = img[img_shape[0] // 3: img_shape[0] // 3 * 2, img_shape[1] // 3: img_shape[1] // 3 * 2]
-        blur_strength = cv2.Laplacian(roi, cv2.CV_16S, 5).var()
-        if self.previousBlur_value is None:
-            self.previousBlur_value = blur_strength
-        blur_strength = ((blur_strength - self.previousBlur_value) / self.previousBlur_value +0.5)*100
-
-        self.progressBar.setValue(blur_strength)
 
     def stop_viewing(self):
         self.log.debug('Indicating to main to stop grabbing')

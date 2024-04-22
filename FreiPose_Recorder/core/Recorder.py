@@ -733,8 +733,9 @@ class Recorder(object):
         cam.StopGrabbing()
 
     def run_multi_cam_show(self, stop_event: Event, use_hw_trigger: bool = False):
-        #self.multi_view_queue = [Queue(self.internal_queue_size) for _ in range(self.cam_array.GetSize())]
-        self.multi_view_queue = [Queue(self.internal_queue_size)] * self.cam_array.GetSize()
+        self.multi_view_queue = [Queue(self.internal_queue_size) for _ in range(self.cam_array.GetSize())]
+        #self.multi_view_queue = [Queue(self.internal_queue_size)] * self.cam_array.GetSize()
+        #second option does copies of ques and not references!
 
         if not self.cam_array.IsOpen():
             self.cam_array.Open()
@@ -743,13 +744,14 @@ class Recorder(object):
                       f'with {self.fps} FPS')
 
         self.cams_context = {} # to identify from which camera the images arrive
+
         for c_id, cam in enumerate(self.cam_array):
             if use_hw_trigger:
                 self._config_cams_hw_trigger(cam)
             else:
                 self._config_cams_continuous(cam)
             self.cams_context[cam.GetCameraContext()] = c_id
-        # self.log.debug(print(self.cams_context))
+        #self.log.debug(self.cams_context)
         self.stop_event = stop_event
         self.error_event.clear()
         self.multi_view_thread = Thread(target=self.multi_cam_show)
@@ -778,6 +780,8 @@ class Recorder(object):
             try:
                 grabResult = self.cam_array.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
                 context_id = self.cams_context[grabResult.GetCameraContext()]
+                #self.log.debug(f"Cam {grabResult.GetCameraContext()} grabbed with context {context_id}")
+
                 if grabResult.GrabSucceeded():
                     if converter.ImageHasDestinationFormat(grabResult):
                         # no conversion required
@@ -872,6 +876,8 @@ class Recorder(object):
             try:
                 grabResult = self.cam_array.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
                 context_id = self.cams_context[grabResult.GetCameraContext()]
+                #self.log.debug(f"Cam {grabResult.GetCameraContext()} grabbed with context {context_id}")
+
                 if grabResult.GetNumberOfSkippedImages() > 0:
                     self.log.warning(f'Cam{context_id}: Missed {grabResult.GetNumberOfSkippedImages()} frames')
                 if grabResult.GrabSucceeded():
