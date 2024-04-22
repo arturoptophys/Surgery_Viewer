@@ -9,73 +9,103 @@ data_serial = usb_cdc.data
 
 MAX_FPS = 150  # maximum fps for the camera
 
-
-class Display:
-    def __init__(self):
-        import adafruit_character_lcd.character_lcd_i2c as character_lcd
-        # Modify this if you have a different sized Character LCD
-        lcd_columns = 16
-        lcd_rows = 2
-
-        # Initialise I2C bus.
-        i2c = board.I2C()  # uses board.SCL and board.SDA
-        # i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
-
-        # Initialise the lcd class
-        self.lcd = character_lcd.Character_LCD_I2C(i2c, lcd_columns, lcd_rows)
-
-    def backlight_on(self):
-        self.lcd.backlight = True
-
-    def backlight_off(self):
-        self.lcd.backlight = False
-
-    def display_message(self, message):
-        self.lcd.message = message
-
-    def clear(self):
-        self.lcd.clear()
-
-    def blink_cursor(self):
-        self.lcd.blink = True
-
-    def no_cursor(self):
-        self.lcd.blink = False
+import time
+import rp2pio
+import array
+import adafruit_pioasm
 
 
-class USBSerialReader:
-    """ Read a line from USB Serial (up to end_char), non-blocking, with optional echo """
+class PIO_trigger:
+    def __init__(self, board_pin: board.LED, name: str, fps: int = 10, verbose: bool = False):
+        self.name = name
+        self.verbose = verbose
+        self.is_active = True  # switch for the Machine to be ignored in update loop
+        self.board_pin = board_pin  # board pin
+        self._fps = fps
+        self.pulse_dur = 5  # in ms duration of on of each burst
+        self.pulse_t0 = ticks_ms()  # for first call
+        self.last_t = self.pulse_t0
+        self._off_dur = int(1000 / self._fps - self.pulse_dur)
+        self.pulse_active = False
+        self.last_duration = 0
+        self.blink = adafruit_pioasm.assemble(
+            """
+            .program frame_trigger
+                pull block    ; These two instructions take the off_duration in cycles
+                out y, 32     ; and store it in y
+            forever:
+                mov x, y
+                set pins, 1  [24] ; Turn LED on   
+                noop [24] ;  on for 50 cycles
+                set pins, 0   ; Turn LED off
+            lp2:
+                jmp x-- lp2   ; Delay for the number of cycles again
+                jmp forever   ; Blink forever!
+            """
+        )
+        self.sm = None
+        self.create_state_machine()
 
-    def __init__(self):
-        self.s = ''
+    @property
+    def fps(self):
+        return self._fps
 
-    def read(self, end_char='\n', echo=True):
-        n = data_serial.in_waiting
-        if n > 0:  # we got bytes!
-            s = data_serial.read(n)  # actually read it in
-            if echo:
-                data_serial.write(s)
-            self.s = self.s + s.decode('utf-8')  # keep building the string up
-            pieces = self.s.split(end_char)
-            if len(pieces) > 1:
-                rstr = pieces[0]
-                self.s = self.s[len(rstr) + 1:]  # reset str to beginning
-                return rstr  # .strip()
-        return None
+    @fps.setter
+    def fps(self, new_value: float):
+        if self.pulse_active:
+            print('Cannot change FPS while pulsing')
+            return
+        if new_value > MAX_FPS:
+            new_value = MAX_FPS
+            if self.verbose:
+                print(f'Input outside of range. Setting to {new_value}Hz')
+        self._fps = new_value
+        self._off_dur = int(1000 / self._fps - self.pulse_dur)
+        self.create_state_machine()
 
-    @staticmethod
-    def send_to_host(message: (dict, str), message_type: str = None):
-        """Sends data back to host computer"""
-        if data_serial.connected:
-            if isinstance(message, dict):
-                assert message_type, 'Message type needs to be specified for a dictionary'
-                message.update(**{'message_type': message_type})
-                message = json.dumps(message) + '\n'
-                data_serial.write(message.encode('utf-8'))
-            elif isinstance(message, str):
-                data_serial.write((message + "\n").encode("utf-8"))
+    def create_state_machine(self):
+        if self.sm:
+            self.sm.stop()
+            self.sm.deinit()
+        self.sm = rp2pio.StateMachine(
+            self.blink,
+            frequency=10_000,
+            first_set_pin=self.board_pin,
+            wait_for_txstall=False,
+        )
+
+    def start_pulsing(self) -> [bool, str]:
+        if self.pulse_active:
+            print('Already pulsing')
+            return 0
+        data = array.array("I", [self.sm.frequency // self.fps - 50])  # need to substract the off time
+        if self.sm:
+            self.sm.write(data)
+            self.pulse_active = True
+            self.pulse_t0 = ticks_ms()
+            return f'Started pulsing at {self.fps} Hz'
         else:
-            print('No serial connection established!!')
+            print('No state machine available')
+            return 0
+
+    def stop_pulsing(self) -> [bool, str]:
+        if not self.pulse_active:
+            print('Not pulsing')
+            return 0
+        if self.sm:
+            self.sm.stop()
+            self.pulse_active = False
+            self.last_t = ticks_ms()
+            self.last_duration = ticks_diff(self.last_t, self.pulse_t0) / 1000
+            return f'Stopped pulsing after {self.last_duration:0.1f} s'
+        else:
+            print('No state machine available')
+            return 0
+
+    def update(self):
+        # doesnt need update function
+        pass
+
 
 class FPS_trigger:
     def __init__(self, board_pin: digitalio.DigitalInOut, name: str, pulse_dur: int = 5, fps: int = 10,
@@ -165,3 +195,69 @@ class FPS_trigger:
             return None
 
 
+class Display:
+    def __init__(self):
+        import adafruit_character_lcd.character_lcd_i2c as character_lcd
+        # Modify this if you have a different sized Character LCD
+        lcd_columns = 16
+        lcd_rows = 2
+
+        # Initialise I2C bus.
+        i2c = board.I2C()  # uses board.SCL and board.SDA
+        # i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
+
+        # Initialise the lcd class
+        self.lcd = character_lcd.Character_LCD_I2C(i2c, lcd_columns, lcd_rows)
+
+    def backlight_on(self):
+        self.lcd.backlight = True
+
+    def backlight_off(self):
+        self.lcd.backlight = False
+
+    def display_message(self, message):
+        self.lcd.message = message
+
+    def clear(self):
+        self.lcd.clear()
+
+    def blink_cursor(self):
+        self.lcd.blink = True
+
+    def no_cursor(self):
+        self.lcd.blink = False
+
+
+class USBSerialReader:
+    """ Read a line from USB Serial (up to end_char), non-blocking, with optional echo """
+
+    def __init__(self):
+        self.s = ''
+
+    def read(self, end_char='\n', echo=True):
+        n = data_serial.in_waiting
+        if n > 0:  # we got bytes!
+            s = data_serial.read(n)  # actually read it in
+            if echo:
+                data_serial.write(s)
+            self.s = self.s + s.decode('utf-8')  # keep building the string up
+            pieces = self.s.split(end_char)
+            if len(pieces) > 1:
+                rstr = pieces[0]
+                self.s = self.s[len(rstr) + 1:]  # reset str to beginning
+                return rstr  # .strip()
+        return None
+
+    @staticmethod
+    def send_to_host(message: (dict, str), message_type: str = None):
+        """Sends data back to host computer"""
+        if data_serial.connected:
+            if isinstance(message, dict):
+                assert message_type, 'Message type needs to be specified for a dictionary'
+                message.update(**{'message_type': message_type})
+                message = json.dumps(message) + '\n'
+                data_serial.write(message.encode('utf-8'))
+            elif isinstance(message, str):
+                data_serial.write((message + "\n").encode("utf-8"))
+        else:
+            print('No serial connection established!!')

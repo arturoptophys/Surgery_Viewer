@@ -35,14 +35,13 @@ if LOG2FILE:
     logging.basicConfig(filename=log_path / f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w',
                         format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.5.0"
+VERSION = "0.5.1"
 
 # TODO
 # move camera enums somewhere less convoluted
-
-# add a way to display/save color videos correctly when using RGB, BGR or Bayes modes
-# update to pypylon 3 ?
-# there is now https://docs.baslerweb.com/pylonapi/cpp/class_pylon_1_1_c_image_format_converter#variable-maxnumthreads build in!
+# check correct distribution of frames in the corresponding Qs!
+# Write documentation for the functions make a docs for it
+# implement connection to raspberry pico (scan ports etc)
 
 class BASLER_GUI(QMainWindow):
     def __init__(self):
