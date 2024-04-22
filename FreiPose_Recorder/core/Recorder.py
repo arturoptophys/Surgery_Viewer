@@ -14,7 +14,7 @@ from pypylon import pylon
 from FreiPose_Recorder.utils.VideoWriterFast_gear import VideoWriterFast
 from FreiPose_Recorder.utils.VideoWriterFast_gear import QueueOverflow
 
-from FreiPose_Recorder.configs.camera_enums import CameraIdentificationSN
+from FreiPose_Recorder.configs.camera_enums import CameraRegistry
 
 from FreiPose_Recorder.params import TIME_STAMP_STRING, TRIGGER_LINE_IN, TRIGGER_LINE_OUT, MAX_FPS, CONVERT2
 
@@ -71,6 +71,7 @@ class Recorder(object):
 
         self.log = logging.getLogger('BaslerRecorder')
         self.log.setLevel(logging.DEBUG)
+        self.cameraregistry = CameraRegistry()
 
     @property
     def fps(self):
@@ -114,7 +115,7 @@ class Recorder(object):
             cam.Attach(tlFactory.CreateDevice(devices[idx]))
             sn = cam.DeviceInfo.GetSerialNumber()
             try:
-                CameraIdentificationSN(sn)
+                self.cameraregistry.get_camera(sn)
             except ValueError:
                 self.log.warning(f'Connected camera {sn} not found in Enum')
 
@@ -123,10 +124,11 @@ class Recorder(object):
         for idx, cam in enumerate(self.cam_array):
             camera_serial = cam.DeviceInfo.GetSerialNumber()
             try:
+                c = self.cameraregistry.get_camera(camera_serial)
                 self.log.debug(
-                    f"set context {CameraIdentificationSN(camera_serial).context} for camera {camera_serial}")
-                cam.SetCameraContext(CameraIdentificationSN(camera_serial).context)
-                cam.DeviceInfo.SetUserDefinedName(CameraIdentificationSN(camera_serial).name)
+                    f"set context {c.get('context')} for camera {camera_serial}")
+                cam.SetCameraContext(c.get('context'))
+                cam.DeviceInfo.SetUserDefinedName(c.get('name'))
             except ValueError:
                 r_int = random.randint(10, 256)
                 cam.SetCameraContext(r_int)  # for unknown cameras set random context
@@ -245,11 +247,12 @@ class Recorder(object):
         if not cam.IsOpen():
             was_closed = True
             cam.Open()
-        self.log.info(f"Setting white balance for {CameraIdentificationSN(cam.DeviceInfo.GetSerialNumber()).name} "
+        c = self.cameraregistry.get_camera(cam.DeviceInfo.GetSerialNumber())
+        self.log.info(f"Setting white balance for {c.get('name')} "
                       f"{cam.GetDeviceInfo().GetSerialNumber()}")
 
         if not self.is_color_cam(cam):
-            self.log.info(f"{CameraIdentificationSN(cam.DeviceInfo.GetSerialNumber()).name} is not a color cam\n"
+            self.log.info(f"{c.get('name')} is not a color cam\n"
                           f"Skipping white balancing")
             return
         try:
@@ -314,7 +317,7 @@ class Recorder(object):
             was_closed = True
             cam.Open()
 
-        self.log.info(f"Setting auto exposure for {CameraIdentificationSN(cam.GetDeviceInfo().GetSerialNumber()).name} "
+        self.log.info(f"Setting auto exposure for {self.cameraregistry.get_camera(cam.GetDeviceInfo().GetSerialNumber()).get('name')}"
                       f"{cam.GetDeviceInfo().GetSerialNumber()}")
         try:
             cam.AutoFunctionROISelector.SetValue('ROI1')
@@ -391,7 +394,7 @@ class Recorder(object):
         if not cam.IsOpen():
             was_closed = True
             cam.Open()
-        self.log.info(f"Setting auto gain for {CameraIdentificationSN(cam.GetDeviceInfo().GetSerialNumber()).name} "
+        self.log.info(f"Setting auto gain for {self.cameraregistry.get_camera(cam.GetDeviceInfo().GetSerialNumber()).get('name','Unknown')} "
                       f"{cam.GetDeviceInfo().GetSerialNumber()}")
 
         # no clue whether those are needed / or work
@@ -658,9 +661,10 @@ class Recorder(object):
         if not cam.IsOpen():
             cam.Open()
         try:
-            self.log.info(f'Showing device {CameraIdentificationSN(cam.GetDeviceInfo().GetSerialNumber()).name} '
+            cam_name = self.cameraregistry.get_camera(cam.GetDeviceInfo().GetSerialNumber()).get('name', 'unknown')
+            self.log.info(f'Showing device {cam_name} '
                           f'with {self.fps} FPS')
-            self.current_cam_name = CameraIdentificationSN(cam.GetDeviceInfo().GetSerialNumber()).name
+            self.current_cam_name = cam_name
         except ValueError:
             self.log.info(f'Showing device {cam.GetDeviceInfo().GetSerialNumber()} with {self.fps} FPS')
             self.current_cam_name = cam.GetDeviceInfo().GetSerialNumber()
