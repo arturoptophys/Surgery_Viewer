@@ -98,4 +98,4 @@ def main_loop_alternative():
             gc.collect()
             garbage_t = ticks_ms()
 
-main_loop()
+#main_loop()

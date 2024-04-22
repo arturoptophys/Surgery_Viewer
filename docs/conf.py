@@ -9,7 +9,7 @@
 project = 'FreiPoseRecorder'
 copyright = '2024, Artur Schneider (Optophysiology, Freiburg)'
 author = 'Artur'
-release = '0.1'
+release = '0.2'
 
 import os
 import sys
@@ -18,7 +18,8 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['myst_parser','sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.napoleon']
+extensions = ['myst_parser', 'sphinx.ext.autodoc', 'sphinx.ext.napoleon',
+              'sphinx.ext.viewcode']
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']

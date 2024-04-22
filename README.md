@@ -5,9 +5,11 @@ It allows to record synchronous video from a multi camera rig using Basler camer
 It includes a GUI for visualization of video streams as well as changing camera settings.
 GUI can be used in remote mode and be controlled via TCP/IP.
 
+read the docs <https://optophys-lab.github.io/FreiPose_Recorder/>
+
 ## Installation guide
-Select and install suitable release of Pylon's libraies from:
-    https://www.baslerweb.com/de/downloads/downloads-software/#type=pylonsoftware
+Select and install suitable release of Pylon's libraries from:
+    <https://www.baslerweb.com/de/downloads/downloads-software/#type=pylonsoftware>
 
 (Optional) Create and activate a conda environment
 
