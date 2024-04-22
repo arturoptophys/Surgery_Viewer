@@ -3,11 +3,17 @@ import usb_cdc
 import board
 import digitalio
 from supervisor import ticks_ms
+import time
+import rp2pio
+import array
+import adafruit_pioasm
+
 from timing_utils import ticks_diff, ticks_less
 
-data_serial = usb_cdc.data
+data_serial = usb_cdc.data  # ensure data serial is on in boot.py
 
 MAX_FPS = 150  # maximum fps for the camera
+#some colors for the LED
 RED = (255, 0, 0)
 YELLOW = (255, 150, 0)
 GREEN = (0, 255, 0)
@@ -15,13 +21,10 @@ CYAN = (0, 255, 255)
 BLUE = (0, 0, 255)
 PURPLE = (180, 0, 255)
 
-import time
-import rp2pio
-import array
-import adafruit_pioasm
 
 
 class PIO_trigger:
+    """Class to control a pulsing of a GPIO with a PIO state machine"""
     def __init__(self, board_pin: board.LED, name: str, fps: int = 10, verbose: bool = False):
         self.name = name
         self.verbose = verbose
@@ -54,11 +57,12 @@ class PIO_trigger:
 
     @property
     def fps(self):
+        """The frequency of the pulsing, in Hz."""
         return self._fps
 
     @fps.setter
     def fps(self, new_value: float):
-        if self.pulse_active:
+        if self.pulse_active: # dont change the property if currently pulsing
             print('Cannot change FPS while pulsing')
             return
         if new_value > MAX_FPS:
@@ -70,17 +74,19 @@ class PIO_trigger:
         self.create_state_machine()
 
     def create_state_machine(self):
+        """Create the state machine for the PIO trigger."""
         if self.sm:
             self.sm.stop()
             self.sm.deinit()
         self.sm = rp2pio.StateMachine(
             self.blink,
-            frequency=10_000,
+            frequency=10_000,  #if freqency is changed number of on cycles have to be modified
             first_set_pin=self.board_pin,
             wait_for_txstall=False,
         )
 
     def start_pulsing(self) -> [bool, str]:
+        """Start pulsing the GPIO at the set frequency."""
         if self.pulse_active:
             print('Already pulsing')
             return 0
@@ -95,6 +101,7 @@ class PIO_trigger:
             return 0
 
     def stop_pulsing(self) -> [bool, str]:
+        """Stop pulsing the GPIO."""
         if not self.pulse_active:
             print('Not pulsing')
             return 0
@@ -109,7 +116,7 @@ class PIO_trigger:
             return 0
 
     def update(self):
-        # doesnt need update function
+        """Not implemneted as not needed for PIO"""
         pass
 
 
@@ -202,12 +209,14 @@ class FPS_trigger:
 
 
 class LEDpixel:
+    """Class to control a single LED pixel on feather boards or similar
+    if not pixel is available, the class will not do anything"""
     def __init__(self, blink_freq=2):
         try:
             import neopixel
             self.pixels = neopixel.NeoPixel(board.NEO, 1, auto_write=True)[0]
             self.pixel_available = True
-        except:
+        except:  # could not find pixel ignore
             self.pixel_available = False
 
         self.is_blinking = False
@@ -216,12 +225,14 @@ class LEDpixel:
         self.last_t = 0
 
     def indicate_connected(self):
+        """sets the brightness of the pixel to 1 and color to green to indicate connection"""
         if not self.pixel_available:
             return
         self.pixels.fill(GREEN)
         self.pixels.brightness = 1
 
     def indicate_recording(self):
+        """starts blinking the pixel  with red color to indicate recording"""
         if not self.pixel_available:
             return
         self.pixels.fill(RED)
@@ -237,12 +248,15 @@ class LEDpixel:
         self.is_blinking = False
 
     def update(self):
+        """updates the pixel state, if it is blinking it will change the brightness of the pixel
+         according to the blink_freq"""
+
         if self.is_blinking and self.pixel_available:
             if ticks_less(self.blink_duration, ticks_diff(ticks_ms(), self.last_t)):  # was on long enough
                 if self.pixels.brightness:
-                    self.pixels.brightness = 0
+                    self.pixels.brightness = 0  # turn off
                 else:
-                    self.pixels.brightness = 1
+                    self.pixels.brightness = 1  # turn on
                 self.last_t += self.blink_duration  # set time for next pulse event
 
 class Display:
