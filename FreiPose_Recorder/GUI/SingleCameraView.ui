@@ -39,55 +39,6 @@
     <string>STOP</string>
    </property>
   </widget>
-  <widget class="QLabel" name="label">
-   <property name="geometry">
-    <rect>
-     <x>80</x>
-     <y>760</y>
-     <width>121</width>
-     <height>16</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Focus indicator</string>
-   </property>
-  </widget>
-  <widget class="QProgressBar" name="progressBar">
-   <property name="geometry">
-    <rect>
-     <x>30</x>
-     <y>780</y>
-     <width>191</width>
-     <height>23</height>
-    </rect>
-   </property>
-   <property name="maximum">
-    <number>100</number>
-   </property>
-   <property name="value">
-    <number>50</number>
-   </property>
-   <property name="textVisible">
-    <bool>false</bool>
-   </property>
-   <property name="invertedAppearance">
-    <bool>false</bool>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="FocusCheckBox">
-   <property name="geometry">
-    <rect>
-     <x>230</x>
-     <y>770</y>
-     <width>181</width>
-     <height>41</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Laplacian
-focus check</string>
-   </property>
-  </widget>
   <widget class="QPushButton" name="WhiteBalanceButton">
    <property name="geometry">
     <rect>
