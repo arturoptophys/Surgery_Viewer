@@ -19,7 +19,7 @@ from PyQt6.QtCore import QTimer
 from PyQt6 import uic, QtGui, QtSerialPort
 
 from pathlib import Path
-from FreiPose_Recorder.core.Recorder_my import Recorder
+from FreiPose_Recorder.core.Recorder import Recorder
 from FreiPose_Recorder.ImageViewer import SingleCamViewer, RemoteConnDialog
 from FreiPose_Recorder.utils.socket_utils import SocketComm, SocketMessage, MessageStatus, MessageType
 from FreiPose_Recorder.core.Trigger import TriggerArduino

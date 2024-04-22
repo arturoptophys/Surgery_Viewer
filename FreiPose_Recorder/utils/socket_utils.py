@@ -1,15 +1,13 @@
 import socket
 import ssl
 import threading
-import json
-import time
 import select
 import logging
-
 from enum import Enum
 
 
 class MessageType(Enum):
+    """Enum class to represent the message types"""
     start_daq = 'start_rec'
     stop_daq = 'stop'
     start_daq_pulses = 'start_pulses'
@@ -26,7 +24,9 @@ class MessageType(Enum):
     copy_files = 'copy_files'
     purge_files = 'purge_files'
 
+
 class MessageStatus(Enum):
+    """Enum class to represent status"""
     ready = 'ready'
     error = 'error'
     viewing = 'viewing'
@@ -40,7 +40,11 @@ class MessageStatus(Enum):
     copy_ok = 'copy_ok'
     copy_fail = 'copy_fail'
 
+
 class SocketMessage:
+    """
+    Class to represent the individual socket messages. Contains attributes such as session id etc.
+    """
     status_error = {'type': MessageType.status.value, 'status': MessageStatus.error.value}
     status_ready = {'type': MessageType.status.value, 'status': MessageStatus.ready.value}
     status_recording = {'type': MessageType.status.value, 'status': MessageStatus.recording.value}
@@ -88,6 +92,7 @@ class SocketMessage:
 
     @property
     def pulse_lag(self):
+        """The lag  for the mcc pulsing in milliseconds"""
         return self._pulse_lag
 
     @pulse_lag.setter
@@ -97,6 +102,7 @@ class SocketMessage:
 
     @property
     def session_id(self):
+        """The session id for the current session"""
         return self._session_id
 
     @session_id.setter
@@ -106,6 +112,7 @@ class SocketMessage:
 
     @property
     def session_path(self):
+        """The session path for the current session"""
         return self._session_path
 
     @session_path.setter
@@ -115,6 +122,7 @@ class SocketMessage:
 
     @property
     def fps(self):
+        """The frame rate for the video recording in frames per second"""
         return self._fps
 
     @fps.setter
@@ -124,6 +132,7 @@ class SocketMessage:
 
     @property
     def daq_setting_file(self):
+        """The setting file for the daq device"""
         return self._daq_setting_file
 
     @daq_setting_file.setter
@@ -133,6 +142,7 @@ class SocketMessage:
 
     @property
     def basler_setting_file(self):
+        """The setting file for the FreiPoseRecorder tool"""
         return self._basler_setting_file
 
     @basler_setting_file.setter
@@ -141,6 +151,7 @@ class SocketMessage:
         self.update_messages()
 
     def update_messages(self):
+        """Updates the messages with the current values"""
         self.start_daq.update(**{'session_id': self.session_id, 'setting_file': self.daq_setting_file})
         self.start_daq_viewing.update(**{'session_id': self._session_id,
                                          'setting_file': self.daq_setting_file})
@@ -156,9 +167,8 @@ class SocketMessage:
 
 class SocketComm:
     """
-    Socket communication class
+    Socket communication class. Enables server-client communitation via network.
     """
-
     def __init__(self, type: str = "server", host: str = "localhost", port: int = 8800, use_ssl: bool = False):
         self.acception_thread = None
         self.ssl_sock = None
@@ -173,8 +183,7 @@ class SocketComm:
         else:
             self.context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
         # self.context.set_ciphers('DEFAULT')
-        self.use_ssl = use_ssl
-        # this doesnt work yet get some weird error from ssl module
+        self.use_ssl = use_ssl # this doesnt work yet get some weird error from ssl module
         self.connected = False
         self.stop_event = threading.Event()
         self.log = logging.getLogger(f"SocketComm_{self.type}")
@@ -182,6 +191,7 @@ class SocketComm:
         self.message_time = time.monotonic()
 
     def create_socket(self):
+        """"""
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.type == 'client':
             pass
@@ -189,7 +199,7 @@ class SocketComm:
             try:
                 self._sock.bind((self.host, self.port))
             except OSError:
-                self.log.warning('Adress alrady in use.. need to delete somehow ?')
+                self.log.warning('Adress already in use.. need to delete somehow ?')
             self._sock.listen()
             if self.use_ssl:
                 self._ssl_sock = self.context.wrap_socket(self._sock, server_side=True, do_handshake_on_connect=False)
@@ -237,6 +247,7 @@ class SocketComm:
     def connect(self) -> bool:
         """
         Connects to the server
+        returns: True if connection was successful, False otherwise
         """
         if self.type == 'client':
             if self.use_ssl:
@@ -264,6 +275,10 @@ class SocketComm:
         self.connected = False
 
     def read_json_message(self) -> dict:
+        """
+        reads message from socket and decodes it into dict
+        returns: dict
+        """
         try:
             message = self._recv_until(b'\n')
             if message is not None:
@@ -273,8 +288,6 @@ class SocketComm:
         except json.decoder.JSONDecodeError:
             message = None
         return message
-
-
 
     def read_json_message_fast(self) -> dict:
         try:
@@ -291,6 +304,11 @@ class SocketComm:
         return message
 
     def read_json_message_fast_linebreak(self) -> dict:
+        """
+        reads message from socket. Message is read until a linebreak charakter is fond
+        The messge ist then decoded into dictionary
+        returns: dict
+        """
         try:
             message = self._recv_until(b'\n')
             if message == -1:
