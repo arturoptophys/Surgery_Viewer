@@ -24,6 +24,7 @@ from FreiPose_Recorder.ImageViewer import SingleCamViewer, RemoteConnDialog
 from FreiPose_Recorder.utils.socket_utils import SocketComm, SocketMessage, MessageStatus, MessageType
 from FreiPose_Recorder.core.Trigger import TriggerArduino
 from FreiPose_Recorder.params import *
+from FreiPose_Recorder.utils.serial_utils import QtPicoSerial
 
 log = logging.getLogger('main')
 log.setLevel(logging.DEBUG)
@@ -96,12 +97,92 @@ class BASLER_GUI(QMainWindow):
         self.is_remote_ctr = False  # bool whether the GUI is currently in remote mode
 
         if USE_ARDUINO_TRIGGER:  # NOT IMPLEMENTE
-            serial_port = f"/dev/{QtSerialPort.QSerialPortInfo.availablePorts()[0].portName()}"
+            #serial_port = f"/dev/{QtSerialPort.QSerialPortInfo.availablePorts()[0].portName()}"
             # find a way to get the port name on windows machines
-            self.trigger = TriggerArduino(serial_port)
-            raise NotImplementedError('Arduino trigger not implemented')
+            #self.trigger = TriggerArduino(serial_port)
+            self.scan_ports()
+            self.trigger = QtPicoSerial(self)
+            #raise NotImplementedError('Arduino trigger not implemented')
         else:
             self.trigger = None
+            self.PortsCombo.deleteLater()
+            self.ConnectB.deleteLater()
+            self.PingB.deleteLater()
+            self.DisConnectB.deleteLater()
+
+    ### Serial connectivity ####
+    def scan_ports(self):
+        """scans for available serial ports"""
+        self.log.debug(f'Scanning serial ports')
+        self.PortsCombo.clear()
+        self.PortsCombo.addItem("<no port selected>")
+        for port in QtSerialPort.QSerialPortInfo.availablePorts():
+            self.PortsCombo.insertItem(0, port.portName())
+        self.ConnectB.setEnabled(True)
+        potential_port = [p_id for p_id, port in enumerate(QtSerialPort.QSerialPortInfo.availablePorts())
+                          if port.portName() == 'ttyACM1']
+        for port_id in potential_port:
+            self.PortsCombo.setCurrentIndex(port_id + 1)
+
+    def connect_to_pico(self):
+        """Connects to the serial port"""
+        portname = self.PortsCombo.currentText()
+        if portname == "<no port selected>":
+            self.log.info('No serial port chosen')
+            return
+        if  self.trigger is None:
+            return
+        self.trigger.set_port(portname)
+        success = self.trigger.open()
+        if success:
+            self.log.debug(f'Connected to port {portname}')
+            self.ConnectB.setText("Connected")
+            self.ConnectB.setEnabled(False)
+            self.PortsCombo.setEnabled(False)
+            self.DisConnectB.setEnabled(True)
+
+    def disconnect_from_pico(self):
+        """Disconnects from the serial port"""
+        if  self.trigger is None:
+            return
+        self.trigger.close()
+        self.log.debug('Disconnected')
+        self.ConnectB.setText("Connect")
+        self.ConnectB.setEnabled(True)
+        self.PortsCombo.setEnabled(True)
+        self.DisConnectB.setEnabled(False)
+        self.scan_ports()
+
+    def pingPython(self):
+        """triggers the pythoncommunicator to send ping command"""
+        self.trigger.ping()
+        self.log.debug('Pinging Circuitpython')
+
+    def reset_ping(self):
+        """
+        Waits for some time and then turns the PingB back to normal.
+        """
+        time.sleep(5)
+        self.PingB.setStyleSheet('')
+
+    def pico_data_received(self, payload):
+        """Process a message from the Pico."""
+        payload = payload.decode()
+        self.log.debug("Received: %s", payload)
+        self.parse_message(payload)
+
+    def parse_message(self, message):
+        m_type = message.split('_')[0]
+        try:
+            payload = message.split('_')[1]  # make sure there is something here!
+        except IndexError:
+            # message without payload
+            payload = None
+
+        if m_type == 'PONG':  # Board responded
+            self.PingB.setStyleSheet('QPushButton {background-color: green;}')
+            self.reset_ping_thread = Thread(target=self.reset_ping)
+            self.reset_ping_thread.start()
 
     ### Device Connectivity ####
     def scan_cams(self):
@@ -208,7 +289,7 @@ class BASLER_GUI(QMainWindow):
             self.trigger.fps = self.FrameRateSpin.value()
             self.trigger_timer = QTimer()
             self.trigger_timer.setSingleShot(True)
-            self.trigger_timer.timeout.connect(self.trigger.start)
+            self.trigger_timer.timeout.connect(self.trigger.start_trigger)
             self.trigger_timer.start(500)
 
     def start_recording_calib(self):
@@ -231,6 +312,15 @@ class BASLER_GUI(QMainWindow):
         self.Rec_status.setStyleSheet("background-color: rgb(125, 0, 255);")
 
     def stop_cams(self):
+        if self.trigger and self.HWTrig_checkBox.isChecked():
+            if  self.trigger.is_pulsing:
+                self.trigger.stop_trigger()
+                self.trigger_stoptimer = QTimer() # buildin a delay to make sure the trigger stopped
+                self.trigger_stoptimer.setSingleShot(True)
+                self.trigger_stoptimer.timeout.connect(self.stop_cams)
+                self.trigger_stoptimer.start(500)
+                return
+
         if self.stop_event:
             self.stop_event.set()
         self.log.debug('Stopping grabbing')
@@ -590,6 +680,10 @@ class BASLER_GUI(QMainWindow):
         if ENABLE_REMOTE:
             self.RemoteModeButton.clicked.connect(self.remote_mode)
         self.REC_calib_Button.clicked.connect(self.start_recording_calib)
+
+        if USE_ARDUINO_TRIGGER:
+            self.ConnectB.clicked.connect(self.connect_to_pico)
+            self.DisConnectB.clicked.connect(self.disconnect_from_pico)
 
     def remote_mode(self):
         if not self.socket_comm.connected:

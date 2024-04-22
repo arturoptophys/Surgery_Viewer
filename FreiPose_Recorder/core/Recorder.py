@@ -16,22 +16,7 @@ from FreiPose_Recorder.utils.VideoWriterFast_gear import QueueOverflow
 
 from FreiPose_Recorder.configs.camera_enums import CameraIdentificationSN
 
-from FreiPose_Recorder.params import TIME_STAMP_STRING, TRIGGER_LINE_IN, TRIGGER_LINE_OUT, MAX_FPS
-
-
-# Another way to get warnings when images are missing ... not used
-# could also implement recording videos inside such routine, needs testing if faster ?
-class MyImageEventHandler(pylon.ImageEventHandler):
-    def __init__(self, camera):
-        super().__init__()
-        self.camera = camera
-        self.countOfSkippedImages = 0
-
-    def OnImagesSkipped(self, camera, countOfSkippedImages):
-        print(f"Camera{camera} skipped {countOfSkippedImages} frames")
-
-    def OnImageGrabbed(self, camera, grabResult):
-        print("CSampleImageEventHandler::OnImageGrabbed called.")
+from FreiPose_Recorder.params import TIME_STAMP_STRING, TRIGGER_LINE_IN, TRIGGER_LINE_OUT, MAX_FPS, CONVERT2
 
 
 import os
@@ -39,10 +24,9 @@ import os
 NUM_CAMERAS = 2  # simulated cameras
 # setup demo environment with emulated cameras
 os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
-
-
 # remove when not needed anymore
 
+CONVERSION_TARGET= {"RGB8":pylon.PixelType_RGB8packed,"Mono8":pylon.PixelType_Mono8}[CONVERT2]
 
 def rel_close(v, max_v, thresh=5.0):
     v_scaled = v / max_v * 100.0
