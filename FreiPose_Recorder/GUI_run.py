@@ -21,9 +21,8 @@ from PyQt6 import uic, QtGui, QtSerialPort
 from pathlib import Path
 from FreiPose_Recorder.core.Recorder import Recorder
 from FreiPose_Recorder.ImageViewer import SingleCamViewer, RemoteConnDialog
-from FreiPose_Recorder.utils.socket_utils import SocketComm, SocketMessage, MessageStatus, MessageType
-from FreiPose_Recorder.core.Trigger import TriggerArduino
-from FreiPose_Recorder.params import *
+from FreiPose_Recorder.utils.socket_utils import SocketComm, SocketMessage, MessageType
+from FreiPose_Recorder.configs.params import *
 from FreiPose_Recorder.utils.serial_utils import QtPicoSerial
 
 log = logging.getLogger('main')

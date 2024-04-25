@@ -1,6 +1,6 @@
 import serial
 import time
-from FreiPose_Recorder.params import MAX_FPS
+from FreiPose_Recorder.configs.params import MAX_FPS
 
 class TriggerArduino:
     def __init__(self, serial_port):

@@ -38,11 +38,11 @@ class CameraRegistry:
     context is hashed from the name, names are enforced to be unique
     thus collisions should be minimized
     _cameras = {
-        '0815-0000': {'name': 'cam_v0', 'context': 0},
-        '0815-0001': {'name': 'cam_v1', 'context': 1},
-        '0815-0002': {'name': 'cam_v2', 'context': 2},
-        '22561089': {'name': 'cam42', 'context': 3},
-        '40069823': {'name': 'cam43', 'context': 4},
+    '0815-0000': {'name': 'cam_v0', 'context': 0},
+    '0815-0001': {'name': 'cam_v1', 'context': 1},
+    '0815-0002': {'name': 'cam_v2', 'context': 2},
+    '22561089': {'name': 'cam42', 'context': 3},
+    '40069823': {'name': 'cam43', 'context': 4},
     }
     """
     def __init__(self):

@@ -4,7 +4,6 @@ import time
 import datetime
 from pathlib import Path
 
-import numpy as np
 from threading import Event, Thread
 from queue import Queue, Full
 
@@ -16,7 +15,7 @@ from FreiPose_Recorder.utils.VideoWriterFast_gear import QueueOverflow
 
 from FreiPose_Recorder.configs.camera_enums import CameraRegistry
 
-from FreiPose_Recorder.params import TIME_STAMP_STRING, TRIGGER_LINE_IN, TRIGGER_LINE_OUT, MAX_FPS, CONVERT2
+from FreiPose_Recorder.configs.params import TIME_STAMP_STRING, TRIGGER_LINE_IN, MAX_FPS, CONVERT2
 
 
 import os

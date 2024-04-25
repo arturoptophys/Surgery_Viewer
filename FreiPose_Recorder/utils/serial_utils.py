@@ -1,10 +1,8 @@
 from PyQt6 import QtSerialPort
-from PyQt6.QtWidgets import QMessageBox, QDialog, QTreeWidgetItem
 from PyQt6.QtCore import QObject, pyqtSignal, QIODevice, pyqtSlot
-from PyQt6 import uic, QtGui
 import logging
 
-from FreiPose_Recorder.params import MAX_FPS
+from FreiPose_Recorder.configs.params import MAX_FPS
 
 
 class QtPicoSerial(QObject):
