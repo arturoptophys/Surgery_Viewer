@@ -9,10 +9,11 @@
 project = 'FreiPoseRecorder'
 copyright = '2024, Artur Schneider (Optophysiology, Freiburg)'
 author = 'Artur'
-release = '0.2'
+release = '1.0.0'
 
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath('..'))
 
 # -- General configuration ---------------------------------------------------
@@ -24,8 +25,7 @@ extensions = ['myst_parser', 'sphinx.ext.autodoc', 'sphinx.ext.napoleon',
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-autodoc_mock_imports = ["circuitpython",'GUI']
-
+autodoc_mock_imports = ["circuitpython", 'GUI']
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

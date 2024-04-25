@@ -30,21 +30,48 @@ To Run the GUI from the commandline:
 
 
 ## User guide
+### Camera names (optional)
+To more easily identify your cameras you can give them custom names.
 
-Add your cameras to configs.camera_enum.py. This gives your cameras unique names.
+Cameras do not have to be manually added to the enums anymore. After first connection to the camera, the serial number is 
+saved in the _cameras.json_ top level file.
+This file is used to load the cameras on subsequent runs. Its a jsonized ditionary with SN as key and camera name and 
+context as value. Context is an int which is used to identify the frames from each camera. Its being hashed from camera 
+name to prevent duplicates.
 
-    #edit FreiPose_Recorder/configs/camera_enums.py
-    #add the serial number of your cams and a name e.g. cam42 = '22561089'
+After first connection to the camera you can modify _cameras.json_ to give your cameras unique names.
+
+### general config
+Can be found in _configs/params.py_ file. It contains the following fields:
+
+- `ENABLE_REMOTE` Boolean to enable remote connection to control GUI via network. Set to False if not using this feature
+- `USE_ARDUINO_TRIGGER` Boolean to use python board as trigger, requires serial connection to the board
+- `CALIB_DURATION` duration of the calibration in ms
+- `CALIB_WAIT`  waiting time before the calibration starts in ms
+- `SAVE_TIMESTAMPS` Boolean to save the timestamps of the frames
+- `TRIGGER_LINE_IN` Input-line on the GPIO cable for the camera for the trigger signal
+- `MAX_FPS`  maximum fps for the camera
+- `LOG2FILE` Boolean to log to a file
+- `CONVERT2` Mono8 or RGB8 Colorformat for conversion
+
+### Camera settings
+Camera settings are loaded from the _default.settings.json_ file. Upon connection to the camera, the settings are loaded,
+if this file is not available dialog asks for any other settings files.
+
+_default.settings.json_ is an jsonized dictionary containing parameters for each camera (_exposure time_, _gain_, _colormode_,
+_white balance_ values) and further general settings, such as _save path_ for videos, preferred _fps_(recording and play fps 
+for free-running mode and only play fps for trigger mode, there the recording fps is dictated by the trigger frequency),
+_codec_ used for video encoding, _crf_ defining the compression level(higher value - higher compression), and boolean 
+to use _HW-triggermode_.
 
 
-Start the RecordTool
-    
+
+
+
+### Start the RecordTool
+from activated environment run:
+
     python GUI_run.py    
-
-
-Convert recorded videos to single frames
-
-    python vid2frames.py recordings/take00/run000_cam5.avi --out-path ./recordings_frames/
 
 
 Default settings to be loaded upon connection should be saved as FreiPose_Recorder/default_settings.settings.json
