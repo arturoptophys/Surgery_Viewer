@@ -22,7 +22,7 @@ import os
 
 NUM_CAMERAS = 2  # simulated cameras
 # setup demo environment with emulated cameras
-os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
+# os.environ["PYLON_CAMEMU"] = f"{NUM_CAMERAS}"
 # remove when not needed anymore
 
 CONVERSION_TARGET= {"RGB8":pylon.PixelType_RGB8packed,"Mono8":pylon.PixelType_Mono8}[CONVERT2]
