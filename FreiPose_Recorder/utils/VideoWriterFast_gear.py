@@ -10,12 +10,11 @@ class QueueOverflow(Exception):
    pass
 
 
-"""
+class VideoWriterFast:
+    """
     Utility for faster Video writing with VideoGear.
     Basically runs writing of frames in an separate thread.
-"""
-
-class VideoWriterFast:
+    """
     def __init__(self, video_path, fps, codec="libx264", crf=0, queue_size=512):
         self.crf = crf
         self.fps = fps
@@ -41,12 +40,14 @@ class VideoWriterFast:
         self.thread.daemon = True
 
     def start(self):
+        """starts the thread to write frames to the video file"""
         self.started = True
         # start a thread to read frames from the file video stream
         self.thread.start()
         return self
 
     def update(self):
+        """"""
         # keep looping infinitely
         while True:
             # if the thread indicator variable is set, stop the

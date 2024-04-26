@@ -1,6 +1,6 @@
 numpy
 pyqtgraph
-pyqt6
+pyqt6 == 6.4.2
 pypylon
 opencv-python
 vidgear[core]

@@ -697,7 +697,7 @@ class Recorder(object):
 
         cam.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
 
-        while not self.stop_event.isSet():
+        while not self.stop_event.is_set():
             try:
                 grabResult = cam.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
                 if grabResult.GrabSucceeded():
@@ -775,7 +775,7 @@ class Recorder(object):
         # will i need an array of converters ?
 
         self.cam_array.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-        while not self.stop_event.isSet():
+        while not self.stop_event.is_set():
             try:
                 grabResult = self.cam_array.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
                 context_id = self.cams_context[grabResult.GetCameraContext()]
@@ -871,7 +871,7 @@ class Recorder(object):
         # cam.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)  # here you dont have any buffer
         # cam.StartGrabbing(pylon.GrabStrategy_OneByOne)  # here you dont get warnings if something gets skipped
 
-        while not self.stop_event.isSet():
+        while not self.stop_event.is_set():
             try:
                 grabResult = self.cam_array.RetrieveResult(self.grab_timeout, pylon.TimeoutHandling_ThrowException)
                 context_id = self.cams_context[grabResult.GetCameraContext()]

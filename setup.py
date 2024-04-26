@@ -10,7 +10,7 @@ setup(
     python_requires=">=3.8,<3.11",
     packages=find_packages(exclude=["circuitpython.*", "circuitpython"]),
     install_requires=["numpy",
-                      "pyqt6",
+                      "pyqt6 == 6.4.2",
                       "pyqtgraph",
                       "pypylon == 3.0.1",
                       "vidgear[core]",

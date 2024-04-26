@@ -13,7 +13,15 @@
    :members:
 .. automodule:: FreiPose_Recorder.ImageViewer
    :members:
-.. automodule:: FreiPose_Recorder.params
+.. automodule:: FreiPose_Recorder.utils.serial_utils
+   :members:
+.. automodule:: FreiPose_Recorder.utils.socket_utils
+   :members:
+.. automodule:: FreiPose_Recorder.utils.VideoReaderFast
+   :members:
+.. automodule:: FreiPose_Recorder.utils.VideoWriterFast_gear
+   :members:
+.. automodule:: FreiPose_Recorder.configs.params
    :members:
 .. automodule:: FreiPose_Recorder.configs.camera_enums
    :members:

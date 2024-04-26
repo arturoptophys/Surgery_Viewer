@@ -405,7 +405,7 @@ class BASLER_GUI(QMainWindow):
         Updates the single view widget with the current image in the queue
         """
         # stop the whole process if an error occured at basler recorder side
-        if self.basler_recorder.error_event.isSet():  # if an error occured
+        if self.basler_recorder.error_event.is_set():  # if an error occured
             self.log.error('Error in Basler recorder')
             self.stop_cams()
             return
@@ -451,7 +451,7 @@ class BASLER_GUI(QMainWindow):
 
     def update_multi_view(self):
         # call this from a thread ? or maybe not
-        if self.basler_recorder.error_event.isSet():  # if an error occured
+        if self.basler_recorder.error_event.is_set():  # if an error occured
             self.log.error('Error in Basler recorder')
             self.stop_cams()
             if self.socket_comm:
