@@ -10,12 +10,12 @@ from queue import Queue, Full
 from pypylon import genicam
 from pypylon import pylon
 
-from FreiPose_Recorder.utils.VideoWriterFast_gear import VideoWriterFast
-from FreiPose_Recorder.utils.VideoWriterFast_gear import QueueOverflow
+from SurgeryViewer.utils.VideoWriterFast_gear import VideoWriterFast
+from SurgeryViewer.utils.VideoWriterFast_gear import QueueOverflow
 
-from FreiPose_Recorder.configs.camera_enums import CameraRegistry
+from SurgeryViewer.configs.camera_enums import CameraRegistry
 
-from FreiPose_Recorder.configs.params import TIME_STAMP_STRING, TRIGGER_LINE_IN, MAX_FPS, CONVERT2
+from SurgeryViewer.configs.params import TIME_STAMP_STRING, TRIGGER_LINE_IN, MAX_FPS, CONVERT2
 
 
 import os

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name="FreiPose_Recorder",
+    name="SurgeryViewer",
     version='1.0.0',
     description='Tool to record videos using (multiple) Basler Cameras synchornoiusly',
     url='https://github.com/Optophys-Lab/FreiPose_Recorder',

@@ -6,6 +6,7 @@ from datetime import datetime
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QDialog, QSizePolicy, \
     QGridLayout, QToolBox,  QDoubleSpinBox, QComboBox, QLabel
 from PyQt6 import uic, QtCore, QtGui, QtWidgets
+from PyQt6.QtGui import QPainter, QPen, QColor
 import numpy as np
 
 import cv2
@@ -24,6 +25,7 @@ class MultiCameraViewer(QWidget):
         self.parent = parent
         self.init_ui()
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
     @property
     def num_cameras(self):
         return self._num_cameras
@@ -81,13 +83,28 @@ class ImageView_camera(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         #layout.setSpacing(0)
         # Create a RawImageWidget
-        self.image_view = pg.RawImageWidget(scaled=True)
+        self.image_view = pg.ImageView()
+        self.image_view.ui.histogram.hide()  # Hide the histogram if not needed
+        self.image_view.ui.roiBtn.hide()     # Hide ROI buttons if not needed
+        self.image_view.ui.menuBtn.hide()    # Hide the menu button if not needed
         self.image_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # Add the RawImageWidget to the layout
         layout.addWidget(self.image_view)
+        self.marker_scatter = pg.ScatterPlotItem(pen=pg.mkPen(None), symbol='o', size=10, brush='r')
+        self.image_view.getView().addItem(self.marker_scatter)
+
+        self.grid_item = pg.GridItem(pen=pg.mkPen(color='w', width=2))
+
+        self.image_view.getView().addItem(self.grid_item)
+
+        self.grid_item.setTickSpacing(x=[40], y=[40])
+        self.grid_item.setVisible(False)
 
         self.image_view.setImage(np.random.randint(0, 255, (128, 128), np.uint8))
+        self.marker_points = []
+        self.counter = 0
+        self.add_markers_toggle = False
 
     def updateView(self, image):
         """
@@ -95,13 +112,56 @@ class ImageView_camera(QWidget):
         image: numpy array containing the image data
         """
         # rotate img such that if it 2 dimentional it s transposed if 3 dimentional only first 2 axis are transposed
+        if self.counter == 0:
+            autoRange = True
+        else:
+            autoRange = False
+        self.counter +=1
         try:
             if len(image.shape) == 3:
-                self.image_view.setImage(image.transpose(1, 0, 2))
+                self.image_view.setImage(image.transpose(1, 0, 2), autoRange=autoRange, autoLevels=False)
             else:
-                self.image_view.setImage(image.T)
+                self.image_view.setImage(image.T, autoRange=autoRange, autoLevels=False)
         except ValueError:
             print("Image could not be displayed. this format is not implemented")
+
+    def mousePressEvent(self, event):
+        # Check if left mouse button is clicked
+        if self.add_markers_toggle:
+            if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                # Get scene position from the event
+                pos = event.position()
+                # Map the position to image coordinates
+                img_coord = self.image_view.getImageItem().mapFromScene(pos)
+                x = img_coord.x()
+                y = img_coord.y()
+
+                self.marker_points.append({
+                    'pos': (x, y),
+                    'size': 10,
+                    'symbol': 'o',
+                    'brush': pg.mkBrush(255, 0, 0)
+                })            # Update the ScatterPlotItem with the new points
+                self.marker_scatter.setData(self.marker_points)
+
+        # Call the base class implementation
+        super().mousePressEvent(event)
+
+    def remove_markers(self):
+        self.marker_scatter.setData([])
+        self.marker_points = []
+
+    def toggle_grid_visibility(self):
+        self.grid_item.setVisible(not self.grid_item.isVisible())
+
+    def update_grid_size(self, size):
+        """
+        Updates the grid size dynamically based on the slider input.
+        """
+        # Update grid spacing
+        #self.grid_spacing = size
+        self.grid_item.setTickSpacing(x=[size], y=[size])
+        #self.grid_size_label.setText(f"Grid Size: {self.grid_spacing}")
 
 
 class SingleCamViewer(QDialog):

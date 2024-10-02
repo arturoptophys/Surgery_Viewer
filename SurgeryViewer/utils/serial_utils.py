@@ -2,7 +2,7 @@ from PyQt6 import QtSerialPort
 from PyQt6.QtCore import QObject, pyqtSignal, QIODevice, pyqtSlot
 import logging
 
-from FreiPose_Recorder.configs.params import MAX_FPS
+from SurgeryViewer.configs.params import MAX_FPS
 
 
 class QtPicoSerial(QObject):
