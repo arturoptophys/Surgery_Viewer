@@ -81,6 +81,8 @@ class BASLER_GUI(QMainWindow):
 
             self.ConnectButton.setEnabled(True)
             self.ScanDevButton.setEnabled(False)  #Y only scan once ?
+
+            self.connect_to_cams()
         else:
             self.Devices_textEdit.clear()
             self.Devices_textEdit.setText(f"Found no cameras !!\n (Re-)Connect a camera and try again.")
@@ -465,16 +467,14 @@ class BASLER_GUI(QMainWindow):
 
             # Create an image (QPixmap) of the appropriate size
             image = QtGui.QImage(int(rect.width()), int(rect.height()), QtGui.QImage.Format.Format_ARGB32)
-            image.fill(QtGui.QColor('white').rgba())  # Fill with white background
+            #image.fill(QtGui.QColor('white').rgba())  # Fill with white background
 
             # Create a QPainter to render the scene into the image
             painter = QtGui.QPainter(image)
-            scene.render(painter, target=QtCore.QRectF(image.rect()), source=rect)
+            scene.render(painter, QtCore.QRectF(image.rect()), rect)
             painter.end()
-            save_path = 'test2'
+            save_path = f'{self.session_id}{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.png'
             image.save(save_path, "PNG")
-
-
 
     def add_markers(self):
         for viewer in self.MultiViewWidget.cam_viewers:

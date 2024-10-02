@@ -292,25 +292,6 @@ Devices</string>
      <string>Flip Y</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="ShowSingleCamButton">
-    <property name="geometry">
-     <rect>
-      <x>710</x>
-      <y>240</y>
-      <width>111</width>
-      <height>51</height>
-     </rect>
-    </property>
-    <property name="toolTip">
-     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Shows the current camera in a single window.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">QPushButton {background-color:  rgb(0, 200, 0)}</string>
-    </property>
-    <property name="text">
-     <string>Show Cam</string>
-    </property>
-   </widget>
    <widget class="MultiCameraViewer" name="MultiViewWidget" native="true">
     <property name="geometry">
      <rect>
