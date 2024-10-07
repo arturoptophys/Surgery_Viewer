@@ -33,7 +33,7 @@ if LOG2FILE:
     logging.basicConfig(filename=log_path / f'GUI_run{datetime.datetime.now().strftime("%m%d_%H%M")}.log', filemode='w',
                         format='%(asctime)s - %(levelname)s - %(message)s')
 
-VERSION = "0.0.0"
+VERSION = "0.0.1"
 
 
 class BASLER_GUI(QMainWindow):

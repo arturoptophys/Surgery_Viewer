@@ -799,6 +799,10 @@ class Recorder(object):
                 self.log.error(e)
                 self.error_event.set()
                 break
+            except genicam.GenericException as e:
+                self.log.error(e)
+                self.error_event.set()
+                break
             except Full:
                 self.log.error(f"Queue buffer for camera {context_id} overrun !")
                 self.error_event.set()

@@ -1,29 +1,22 @@
 # API reference
 
-## FreiPoseRecoder
+## SurgeryViewer
 
 ```{eval-rst}
-.. automodule:: FreiPose_Recorder
+.. automodule:: SurgeryViewer
    :members:
-.. automodule:: FreiPose_Recorder.core.Recorder
+.. automodule:: SurgeryViewer.core.Recorder
    :members:
-.. automodule:: FreiPose_Recorder.core.Trigger
+.. automodule:: SurgeryViewer.GUI_run
    :members:
-.. automodule:: FreiPose_Recorder.GUI_run
+.. automodule:: SurgeryViewer.ImageViewer
    :members:
-.. automodule:: FreiPose_Recorder.ImageViewer
+.. automodule:: SurgeryViewer.utils.VideoReaderFast
    :members:
-.. automodule:: FreiPose_Recorder.utils.serial_utils
+.. automodule:: SurgeryViewer.utils.VideoWriterFast_gear
    :members:
-.. automodule:: FreiPose_Recorder.utils.socket_utils
+.. automodule:: SurgeryViewer.configs.params
    :members:
-.. automodule:: FreiPose_Recorder.utils.VideoReaderFast
+.. automodule:: SurgeryViewer.configs.camera_enums
    :members:
-.. automodule:: FreiPose_Recorder.utils.VideoWriterFast_gear
-   :members:
-.. automodule:: FreiPose_Recorder.configs.params
-   :members:
-.. automodule:: FreiPose_Recorder.configs.camera_enums
-   :members:
-
 ```
